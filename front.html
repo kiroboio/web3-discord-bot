@@ -1,0 +1,9 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	const socket = io();
+	window.ethereum.request({ method: "eth_requestAccounts" }).then((accounts) => {
+		const account = accounts[0];
+		console.log({ account });
+		socket.emit("account", account);
+	});
+</script>

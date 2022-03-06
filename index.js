@@ -14,7 +14,7 @@ bot.on("message", (ctx) => {
 	}
 
 	if (ctx.content === "/start") {
-		ctx.reply(`https://web3-discord-metamask-bot.herokuapp.com/`);
+		ctx.reply(`https://web3-discord-bot.herokuapp.com/`);
 	}
 
 });
@@ -31,6 +31,7 @@ const io = new Server(server);
 const DEFAULT_PORT = 3333;
 
 app.get("/", (_req, res) => {
+	console.log("get /")
 	res.sendFile("front.html", { root: __dirname });
 });
 
@@ -40,6 +41,6 @@ io.on("connection", (socket) => {
 	});
 });
 
-server.listen(process.env.PORT || DEFAULT_PORT, () => {
+server.listen({ port: DEFAULT_PORT}, () => {
 	console.log(`listening on *:${DEFAULT_PORT}`);
 });
