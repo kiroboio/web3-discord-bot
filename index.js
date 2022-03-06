@@ -1,46 +1,48 @@
-const express =  require("express");
-const http =  require("http");
-const { Server } =  require("socket.io");
-const Discord =  require("discord.js");
+const express = require("express");
+const Discord = require("discord.js");
+const socketIO = require("socket.io");
 
 const bot = new Discord.Client();
 
-
-
 bot.on("message", (ctx) => {
-	console.log({ ctx });
-	if (ctx.content === "ciao") {
-		ctx.reply(ctx.content);
-	}
+  console.log({ ctx });
+  if (ctx.content === "ciao") {
+    ctx.reply(ctx.content);
+  }
 
-	if (ctx.content === "/start") {
-		ctx.reply(`https://web3-discord-bot.herokuapp.com/`);
-	}
-
+  if (ctx.content === "/start") {
+    ctx.reply(`https://web3-discord-bot.herokuapp.com/`);
+  }
 });
 
 bot.login("OTQ4NTc0OTUzMDUyMTg0NjQ2.Yh9zRA.fl8D5fRSvR6c74j-Aox2J3PlHzI");
 
 const app = express();
-const server = http.createServer(app);
 
-app.use(express.static("public"));
 
-const io = new Server(server);
+//app.use(express.static("public"));
+
+
 const DEFAULT_PORT = 3333;
+const PORT = process.env.PORT || DEFAULT_PORT;
+const INDEX = '/index.html';
 
-app.get("/", (_req, res) => {
-	console.log("get /")
-	res.sendFile("front.html", { root: __dirname });
-});
+const server = app
+  .use((req, res) => res.sendFile(INDEX, { root: __dirname }))
+  .listen(PORT, () => console.log(`Listening on ${PORT}`));
 
+// app.get("/", (_req, res) => {
+//   console.log("get /");
+//   res.status(200).sendFile("front.html", { root: __dirname });
+// });
+
+const io = socketIO(server);
 io.on("connection", (socket) => {
-	socket.on("account", (msg) => {
-		console.log(`message: ${msg}`);
-	});
+  socket.on("account", (msg) => {
+    console.log(`message: ${msg}`);
+  });
 });
 
-const port = process.env.PORT | DEFAULT_PORT
-server.listen({ port }, () => {
-	console.log(`listening on *:${port}`);
-});
+// app.listen({ port }, () => {
+//   console.log(`listening on *:${PORT}`);
+// });
