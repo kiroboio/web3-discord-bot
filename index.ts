@@ -1,6 +1,7 @@
-const express = require("express");
-const Discord = require("discord.js");
-const socketIO = require("socket.io");
+require('dotenv').config()
+import express from "express";
+import Discord from "discord.js";
+import { Server } from "socket.io";
 
 const bot = new Discord.Client();
 
@@ -15,7 +16,7 @@ bot.on("message", (ctx) => {
   }
 });
 
-bot.login("OTQ4NTc0OTUzMDUyMTg0NjQ2.Yh9zRA.fl8D5fRSvR6c74j-Aox2J3PlHzI");
+bot.login(process.env.BOT_TOKEN);
 
 const app = express();
 
@@ -28,21 +29,12 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 const INDEX = '/index.html';
 
 const server = app
-  .use((req, res) => res.sendFile(INDEX, { root: __dirname }))
+  .use((_req, res) => res.sendFile(INDEX, { root: __dirname }))
   .listen(PORT, () => console.log(`Listening on ${PORT}`));
 
-// app.get("/", (_req, res) => {
-//   console.log("get /");
-//   res.status(200).sendFile("front.html", { root: __dirname });
-// });
-
-const io = socketIO(server);
+const io = new Server(server);
 io.on("connection", (socket) => {
   socket.on("account", (msg) => {
     console.log(`message: ${msg}`);
   });
 });
-
-// app.listen({ port }, () => {
-//   console.log(`listening on *:${PORT}`);
-// });
