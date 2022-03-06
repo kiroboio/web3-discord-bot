@@ -4,7 +4,6 @@
     "module": "commonjs",
     "target": "es6",
     "lib": ["es6", "dom"],
-    "jsx": "react",
     "declaration": true,
     "moduleResolution": "node",
     "noUnusedLocals": true,
