@@ -24,7 +24,6 @@ bot.login("OTQ4NTc0OTUzMDUyMTg0NjQ2.Yh9zRA.fl8D5fRSvR6c74j-Aox2J3PlHzI");
 const app = express();
 const server = http.createServer(app);
 
-
 app.use(express.static("public"));
 
 const io = new Server(server);
@@ -41,6 +40,7 @@ io.on("connection", (socket) => {
 	});
 });
 
-server.listen({ port: DEFAULT_PORT}, () => {
-	console.log(`listening on *:${DEFAULT_PORT}`);
+const port = process.env.PORT | DEFAULT_PORT
+server.listen({ port }, () => {
+	console.log(`listening on *:${port}`);
 });
