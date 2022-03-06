@@ -50,7 +50,7 @@ export class Web3Vault {
     try {
       console.log({ address });
       const onChainContract = this.getVaultContractFactory({ chainId });
-      console.log({ onChainContract });
+      // console.log({ onChainContract });
       const walletAccount = await onChainContract?.methods
         .getWallet(address)
         .call();

@@ -1,1 +1,1 @@
-import "./server/server"
+import "./bot"

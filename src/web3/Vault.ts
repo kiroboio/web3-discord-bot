@@ -6,6 +6,8 @@ export class Vault {
   public static setVaultContract = async ({ address, chainId }: { address: string, chainId: 1 | 4 }) => {
     if(this.contract.address) return;
     if(!address) return;
-    this.contract.address = await  Web3Vault.getVaultContract({ address, chainId })
+    const contract = await  Web3Vault.getVaultContract({ address, chainId })
+    console.log({ contract })
+    this.contract[address] = contract
   }
 }
