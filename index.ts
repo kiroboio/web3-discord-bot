@@ -16,7 +16,7 @@ bot.on("message", (ctx) => {
   }
 });
 
-bot.login("OTQ4NTc0OTUzMDUyMTg0NjQ2.Yh9zRA.fl8D5fRSvR6c74j-Aox2J3PlHzI");
+bot.login(process.env.BOT_TOKEN);
 
 const app = express();
 

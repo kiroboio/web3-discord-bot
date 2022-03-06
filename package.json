@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "npx ts-node index.ts",
+    "start": "node index.js",
+    "dev": "npx ts-node index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "heroku_local": "heroku local web"
+    "heroku_local": "heroku local web",
+    "build": "tsc --project tsconfig.json"
   },
   "author": "",
   "license": "ISC",
