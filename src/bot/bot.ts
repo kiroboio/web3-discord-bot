@@ -1,4 +1,4 @@
-import { CacheType, Client, CommandInteraction, Intents } from "discord.js";
+import { Client, Intents } from "discord.js";
 import express from "express";
 import { Server, Socket } from "socket.io";
 import { Vault } from "../web3/Vault";
@@ -42,63 +42,80 @@ const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 class User {
   public client: Client<boolean>;
   public socket: IoSocket;
+  public accountListener:
+    | (({
+        account,
+        userId,
+      }: {
+        account: string;
+        userId: string;
+      }) => Promise<void>)
+    | undefined;
+  public channelId: string;
+  public address: string | undefined;
+
   private userId: string;
-  //private interaction: CommandInteraction<CacheType>;
-
-  private address: string | undefined;
   private vaultContract: Contract | undefined;
-
+  private sendMessageToUser = ({ message }: { message: string }) => {
+    this.client.users.cache.get(this.userId)?.send(message);
+  };
+  // private sendMessageInChannel = ({ message }: { message: string }) => {
+  //   // @ts-expect-error: send exist
+  //   this.client.channels.cache.get(this.channelId)?.send(message);
+  // };
   constructor({
-    socket,
     client,
     userId,
-    interaction,
+    channelId,
   }: {
     client: Client<boolean>;
-    socket: IoSocket;
+
     userId: string;
-    interaction: CommandInteraction<CacheType>;
+    channelId: string;
   }) {
-    this.socket = socket;
+    //this.socket = socket;
     this.client = client;
     this.userId = userId;
-
-    const accountListener = async (address: string) => {
-      console.log(`account ${address}`);
-      if (!address) return;
-      this.address;
-      await Vault.setVaultContract({ address, chainId: 4 });
-      const vaultContract = Vault.contract[address];
-      this.vaultContract = vaultContract;
-      const vaultContractAddress = vaultContract
-        ? vaultContract.options.address
-        : "vault not found";
-
-      if (interaction.user.id !== this.userId) return;
-      interaction.followUp(vaultContractAddress);
-      this.runClient();
-    };
-
-    this.socket.on("account", ({ account, userId }) => {
-      console.log({ serverUserId: userId, serverUserAccount: account })
-      if(userId !== this.userId) return;
-
-      accountListener(account);
-    });
+    this.channelId = channelId;
   }
 
-  public runClient = () => {
-    this.client.on("interactionCreate", async (interaction) => {
-      if (!interaction.isCommand()) return;
-      if (
-        interaction.commandName === "vault" &&
-        interaction.user.id === this.userId
-      ) {
-        interaction.reply(
-          this.vaultContract?.options.address || "Vault not found"
-        );
-      }
-    });
+  public onNewAccount = async ({ account }: { account: string }) => {
+    if (!account || account === this.address) return;
+    this.address = account;
+    await Vault.setVaultContract({ address: account, chainId: 4 });
+    const vaultContract = Vault.contract[account];
+    this.vaultContract = vaultContract;
+    const vaultContractAddress = vaultContract
+      ? vaultContract.options.address
+      : "vault not found";
+    this.sendMessageToUser({ message: vaultContractAddress });
+  };
+
+  public onAccountChange = async ({
+    account,
+    userId,
+  }: {
+    account: string;
+    userId: string;
+  }) => {
+    if (userId !== this.userId) return;
+    if (!account || account === this.address) return;
+
+    this.address = account;
+    await Vault.setVaultContract({ address: account, chainId: 4 });
+    const vaultContract = Vault.contract[account];
+    this.vaultContract = vaultContract;
+    const vaultContractAddress = vaultContract
+      ? vaultContract.options.address
+      : "vault not found";
+    this.sendMessageToUser({ message: vaultContractAddress });
+  };
+
+  public removeAccountListener = () => {
+    if (!this.accountListener) return;
+
+    this.socket.removeListener("account", this.accountListener);
+    this.accountListener = undefined;
   };
 
   public getUserId = () => {
@@ -117,6 +134,7 @@ class User {
 class Bot {
   private client: Client<boolean>;
   private io: IO;
+  private socket: IoSocket;
   private rest: REST;
   private users: { [key: string]: User } = {};
   constructor({
@@ -139,6 +157,9 @@ class Bot {
         .setName("connect")
         .setDescription("Connect with metamask account"),
       new SlashCommandBuilder()
+        .setName("disconnect")
+        .setDescription("Disconnect metamask"),
+      new SlashCommandBuilder()
         .setName("vault")
         .setDescription("Replies with vault address"),
     ].map((command) => command.toJSON());
@@ -160,38 +181,66 @@ class Bot {
             interaction.reply("already connected");
             return;
           }
-          this.runSocket({ userId: interaction.user.id, interaction });
-          interaction.reply(URL);
+
+          this.createUser({
+            userId: interaction.user.id,
+            channelId: interaction.channelId,
+          });
+          interaction.reply({ content: URL, ephemeral: true });
+        }
+        if (interaction.commandName === "disconnect") {
+          if (!this.users[interaction.user.id]) {
+            interaction.reply("not connected");
+            return;
+          }
+
+          this.users[interaction.user.id]?.removeAccountListener();
+
+          delete this.users[interaction.user.id];
+          interaction.reply({ content: "disconnected", ephemeral: true });
         }
       });
     });
     this.client.login(process.env.TOKEN);
   };
 
-  public runSocket = ({
-    userId,
-    interaction,
-  }: {
-    userId: string;
-    interaction: CommandInteraction<CacheType>;
-  }) => {
+  public runSocket = () => {
     this.io.on("connection", (socket) => {
-      const user = new User({
-        client: this.client,
-        socket,
-        userId,
-        interaction,
-      });
-      this.users[userId] = user;
+      this.socket = socket;
 
-      console.log({ users: this.users });
-      socket.emit("userId", { userId });
+      this.socket.on("account", ({ account, userId }) => {
+        Object.keys(this.users).map((key: string) => {
+          const user = this.users[key];
+          if (user.address) {
+            user.onAccountChange({ account, userId });
+          } else {
+            this.socket.emit("userId", { userId: user.getUserId() });
+            user.onNewAccount({ account });
+          }
+        });
+      });
     });
+  };
+
+  public createUser = ({
+    userId,
+    channelId,
+  }: {
+    channelId: string;
+    userId: string;
+  }) => {
+    const user = new User({
+      client: this.client,
+      channelId,
+      userId,
+    });
+    this.users[userId] = user;
   };
 }
 
 const bot = new Bot({ client, io, rest });
 bot.setCommands();
 bot.runClient();
+bot.runSocket();
 
 export { bot };
