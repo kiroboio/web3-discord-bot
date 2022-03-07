@@ -1,0 +1,27 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	const socket = io();
+	const user = {
+		userId: '',
+		account: '',
+	};
+
+	window.ethereum.request({ method: "eth_requestAccounts" }).then((accounts) => {
+		const account = accounts[0];
+		socket.emit("account", { account, userId: user.userId });
+	});
+	window.ethereum.on('accountsChanged', function (accounts) {
+		const account = accounts[0];
+		if(!user.userId || !account) return;
+
+		socket.emit("account", { account, userId: user.userId });
+	})
+
+	socket.on("userId", ({ userId }) => {
+		console.log({ clientUserId: userId, user })
+		user.userId = userId
+		if(!user.account) return;
+
+		socket.emit("account", { account: user.account, userId: user.userId });
+	})
+</script>

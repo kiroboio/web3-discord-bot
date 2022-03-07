@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "heroku-local": "heroku local web",
     "build": "tsc && npm run copy-files",
-    "copy-files": "cp ./src/**.html ./dist/"
+    "copy-files": "cp ./src/bot/**.html ./dist/bot"
   },
   "author": "",
   "license": "ISC",
