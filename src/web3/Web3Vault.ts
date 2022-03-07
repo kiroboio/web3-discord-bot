@@ -48,9 +48,7 @@ export class Web3Vault {
     address: string;
   }) => {
     try {
-      console.log({ address });
       const onChainContract = this.getVaultContractFactory({ chainId });
-      // console.log({ onChainContract });
       const walletAccount = await onChainContract?.methods
         .getWallet(address)
         .call();

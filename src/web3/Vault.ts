@@ -7,7 +7,6 @@ export class Vault {
     if(this.contract.address) return;
     if(!address) return;
     const contract = await  Web3Vault.getVaultContract({ address, chainId })
-    console.log({ contract })
     this.contract[address] = contract
   }
 }

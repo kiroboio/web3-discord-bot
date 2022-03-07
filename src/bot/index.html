@@ -1,9 +1,17 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 	const socket = io();
+	const user = {
+		userId: ''
+	};
 	window.ethereum.request({ method: "eth_requestAccounts" }).then((accounts) => {
 		const account = accounts[0];
-		console.log({ account });
-		socket.emit("account", account);
+		console.log({ account, user });
+		if(!user.userId || !account) return;
+		socket.emit("account", { account, userId: user.userId });
 	});
+	socket.on("userId", ({ userId }) => {
+		console.log({ clientUserId: userId })
+		user.userId = userId
+	})
 </script>
