@@ -7,14 +7,14 @@
 		sessionId: '',
 	};
 
-	window.ethereum.request({ method: "eth_requestAccounts" }).then((accounts) => {
+	ethereum?.request({ method: "eth_requestAccounts" }).then((accounts) => {
 		const account = accounts[0];
 		user.account = account;
 		if (!user.userId || !account) return;
 
 		socket.emit("account", { account, sessionId: user.sessionId });
 	});
-	window.ethereum.on('accountsChanged', function (accounts) {
+	ethereum?.on('accountsChanged', function (accounts) {
 		const account = accounts[0];
 		user.account = account;
 		if (!user.userId || !account) return;
