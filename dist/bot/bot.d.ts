@@ -16,7 +16,9 @@ declare class Bot {
     });
     setCommands: () => void;
     runClient: () => void;
-    runSocket: () => void;
+    runSocket: ({ id }: {
+        id: string;
+    }) => void;
     createUser: ({ userId, channelId, }: {
         channelId: string;
         userId: string;

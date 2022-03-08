@@ -146,22 +146,21 @@ class Bot {
             });
             this.client.login(process.env.TOKEN);
         };
-        this.runSocket = () => {
-            this.io.on("connection", (socket) => {
+        this.runSocket = ({ id }) => {
+            const accountListener = (socket) => {
                 this.socket = socket;
+                this.socket.emit("userId", { userId: id });
                 this.socket.on("account", ({ account, userId }) => {
-                    Object.keys(this.users).map((key) => {
-                        const user = this.users[key];
-                        if (user.address) {
-                            user.onAccountChange({ account, userId });
-                        }
-                        else {
-                            this.socket.emit("userId", { userId: user.getUserId() });
-                            user.onNewAccount({ account });
-                        }
-                    });
+                    console.log({ account, userId, id });
+                    if (id !== userId)
+                        return;
+                    const user = this.users[userId];
+                    user === null || user === void 0 ? void 0 : user.onAccountChange({ account, userId });
                 });
-            });
+                //this.io.off("connection", accountListener)
+            };
+            // this.io.off("connection", accountListener)
+            this.io.on("connection", accountListener);
         };
         this.createUser = ({ userId, channelId, }) => {
             const user = new User({
@@ -170,6 +169,7 @@ class Bot {
                 userId,
             });
             this.users[userId] = user;
+            this.runSocket({ id: userId });
         };
         this.client = client;
         this.io = io;
@@ -180,4 +180,3 @@ const bot = new Bot({ client, io, rest });
 exports.bot = bot;
 bot.setCommands();
 bot.runClient();
-bot.runSocket();
