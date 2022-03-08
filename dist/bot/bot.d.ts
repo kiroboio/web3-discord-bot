@@ -6,19 +6,15 @@ declare type IO = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, a
 declare class Bot {
     private client;
     private io;
-    private socket;
     private rest;
     private users;
-    constructor({ client, io, rest, }: {
+    constructor({ client, rest, }: {
         client: Client<boolean>;
-        io: IO;
         rest: REST;
+        io: IO;
     });
     setCommands: () => void;
     runClient: () => void;
-    runSocket: ({ id }: {
-        id: string;
-    }) => void;
     createUser: ({ userId, channelId, }: {
         channelId: string;
         userId: string;

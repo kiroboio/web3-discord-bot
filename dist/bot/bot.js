@@ -38,28 +38,14 @@ const io = new socket_io_1.Server(server);
 const client = new discord_js_1.Client({ intents: [discord_js_1.Intents.FLAGS.GUILDS] });
 const rest = new rest_1.REST({ version: "9" }).setToken(process.env.TOKEN || "");
 class User {
-    // private sendMessageInChannel = ({ message }: { message: string }) => {
-    //   // @ts-expect-error: send exist
-    //   this.client.channels.cache.get(this.channelId)?.send(message);
-    // };
-    constructor({ client, userId, channelId, }) {
+    constructor({ client, userId, channelId, sessionId, }) {
         this.sendMessageToUser = ({ message }) => {
             var _a;
             (_a = this.client.users.cache.get(this.userId)) === null || _a === void 0 ? void 0 : _a.send(message);
         };
-        this.onNewAccount = ({ account }) => __awaiter(this, void 0, void 0, function* () {
-            if (!account || account === this.address)
-                return;
-            this.address = account;
-            yield Vault_1.Vault.setVaultContract({ address: account, chainId: 4 });
-            const vaultContract = Vault_1.Vault.contract[account];
-            this.vaultContract = vaultContract;
-            const vaultContractAddress = vaultContract
-                ? vaultContract.options.address
-                : "vault not found";
-            this.sendMessageToUser({ message: vaultContractAddress });
-        });
         this.onAccountChange = ({ account, userId, }) => __awaiter(this, void 0, void 0, function* () {
+            if (!userId)
+                return;
             if (userId !== this.userId)
                 return;
             if (!account || account === this.address)
@@ -73,12 +59,6 @@ class User {
                 : "vault not found";
             this.sendMessageToUser({ message: vaultContractAddress });
         });
-        this.removeAccountListener = () => {
-            if (!this.accountListener)
-                return;
-            this.socket.removeListener("account", this.accountListener);
-            this.accountListener = undefined;
-        };
         this.getUserId = () => {
             return this.userId;
         };
@@ -88,14 +68,25 @@ class User {
         this.getAddress = () => {
             return this.address;
         };
-        //this.socket = socket;
+        this.accountListener = ({ socket }) => {
+            if (this.sessionId !== socket.id)
+                return;
+            socket.on("account", ({ account, userId, sessionId }) => {
+                if (this.userId !== userId)
+                    return;
+                if (this.sessionId !== sessionId)
+                    return;
+                this === null || this === void 0 ? void 0 : this.onAccountChange({ account, userId });
+            });
+        };
         this.client = client;
         this.userId = userId;
         this.channelId = channelId;
+        this.sessionId = sessionId;
     }
 }
 class Bot {
-    constructor({ client, io, rest, }) {
+    constructor({ client, rest, }) {
         this.users = {};
         this.setCommands = () => {
             const commands = [
@@ -119,7 +110,6 @@ class Bot {
         this.runClient = () => {
             this.client.once("ready", () => {
                 this.client.on("interactionCreate", (interaction) => __awaiter(this, void 0, void 0, function* () {
-                    var _a;
                     if (!interaction.isCommand())
                         return;
                     if (interaction.commandName === "connect") {
@@ -131,14 +121,13 @@ class Bot {
                             userId: interaction.user.id,
                             channelId: interaction.channelId,
                         });
-                        interaction.reply({ content: URL, ephemeral: true });
+                        interaction.reply({ content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`, ephemeral: true });
                     }
                     if (interaction.commandName === "disconnect") {
                         if (!this.users[interaction.user.id]) {
                             interaction.reply("not connected");
                             return;
                         }
-                        (_a = this.users[interaction.user.id]) === null || _a === void 0 ? void 0 : _a.removeAccountListener();
                         delete this.users[interaction.user.id];
                         interaction.reply({ content: "disconnected", ephemeral: true });
                     }
@@ -146,37 +135,30 @@ class Bot {
             });
             this.client.login(process.env.TOKEN);
         };
-        this.runSocket = ({ id }) => {
-            const accountListener = (socket) => {
-                this.socket = socket;
-                this.socket.emit("userId", { userId: id });
-                this.socket.on("account", ({ account, userId }) => {
-                    console.log({ account, userId, id });
-                    if (id !== userId)
-                        return;
-                    const user = this.users[userId];
-                    user === null || user === void 0 ? void 0 : user.onAccountChange({ account, userId });
-                });
-                //this.io.off("connection", accountListener)
-            };
-            // this.io.off("connection", accountListener)
-            this.io.on("connection", accountListener);
-        };
         this.createUser = ({ userId, channelId, }) => {
-            const user = new User({
-                client: this.client,
-                channelId,
-                userId,
-            });
-            this.users[userId] = user;
-            this.runSocket({ id: userId });
+            this.io.removeAllListeners("connection");
+            const connectListener = (socket) => {
+                var _a;
+                if (this.users[userId])
+                    return;
+                const user = new User({
+                    client: this.client,
+                    channelId,
+                    userId,
+                    sessionId: socket.id,
+                });
+                socket.emit("userId", { userId });
+                this.users[userId] = user;
+                (_a = this.users[userId]) === null || _a === void 0 ? void 0 : _a.accountListener({ socket });
+            };
+            this.io.on("connection", connectListener);
         };
         this.client = client;
-        this.io = io;
         this.rest = rest;
+        this.io = io;
     }
 }
-const bot = new Bot({ client, io, rest });
+const bot = new Bot({ client, rest, io });
 exports.bot = bot;
 bot.setCommands();
 bot.runClient();

@@ -4,28 +4,33 @@
 	const user = {
 		userId: '',
 		account: '',
+		sessionId: '',
 	};
 
 	window.ethereum.request({ method: "eth_requestAccounts" }).then((accounts) => {
 		const account = accounts[0];
 		user.account = account;
-		if(!user.userId || !account) return;
+		if (!user.userId || !account) return;
 
-		socket.emit("account", { account, userId: user.userId });
+		socket.emit("account", { account, sessionId: user.sessionId });
 	});
 	window.ethereum.on('accountsChanged', function (accounts) {
 		const account = accounts[0];
 		user.account = account;
-		if(!user.userId || !account) return;
+		if (!user.userId || !account) return;
 
-		socket.emit("account", { account, userId: user.userId });
+		socket.emit("account", { account, userId: user.userId, sessionId: user.sessionId });
 	})
+
+	socket.on("connect", () => {
+		user.sessionId = socket.id
+	});
 
 	socket.on("userId", ({ userId }) => {
-		console.log({ clientUserId: userId, user })
 		user.userId = userId
-		if(!user.account) return;
+		if (!user.account) return;
 
-		socket.emit("account", { account: user.account, userId: user.userId });
+		socket.emit("account", { account: user.account, userId: user.userId, sessionId: user.sessionId });
 	})
+
 </script>

@@ -40,16 +40,7 @@ const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
 class User {
   public client: Client<boolean>;
-  public socket: IoSocket;
-  public accountListener:
-    | (({
-      account,
-      userId,
-    }: {
-      account: string;
-      userId: string;
-    }) => Promise<void>)
-    | undefined;
+  public sessionId: string;
   public channelId: string;
   public address: string | undefined;
 
@@ -58,37 +49,23 @@ class User {
   private sendMessageToUser = ({ message }: { message: string }) => {
     this.client.users.cache.get(this.userId)?.send(message);
   };
-  // private sendMessageInChannel = ({ message }: { message: string }) => {
-  //   // @ts-expect-error: send exist
-  //   this.client.channels.cache.get(this.channelId)?.send(message);
-  // };
+
   constructor({
     client,
     userId,
     channelId,
+    sessionId,
   }: {
     client: Client<boolean>;
-
     userId: string;
     channelId: string;
+    sessionId: string;
   }) {
-    //this.socket = socket;
     this.client = client;
     this.userId = userId;
     this.channelId = channelId;
+    this.sessionId = sessionId
   }
-
-  public onNewAccount = async ({ account }: { account: string }) => {
-    if (!account || account === this.address) return;
-    this.address = account;
-    await Vault.setVaultContract({ address: account, chainId: 4 });
-    const vaultContract = Vault.contract[account];
-    this.vaultContract = vaultContract;
-    const vaultContractAddress = vaultContract
-      ? vaultContract.options.address
-      : "vault not found";
-    this.sendMessageToUser({ message: vaultContractAddress });
-  };
 
   public onAccountChange = async ({
     account,
@@ -97,6 +74,7 @@ class User {
     account: string;
     userId: string;
   }) => {
+    if (!userId) return;
     if (userId !== this.userId) return;
     if (!account || account === this.address) return;
 
@@ -110,12 +88,6 @@ class User {
     this.sendMessageToUser({ message: vaultContractAddress });
   };
 
-  public removeAccountListener = () => {
-    if (!this.accountListener) return;
-
-    this.socket.removeListener("account", this.accountListener);
-    this.accountListener = undefined;
-  };
 
   public getUserId = () => {
     return this.userId;
@@ -128,26 +100,36 @@ class User {
   public getAddress = () => {
     return this.address;
   };
+
+  public accountListener = ({ socket }: { socket: IoSocket }) => {
+    if (this.sessionId !== socket.id) return;
+
+    socket.on("account", ({ account, userId, sessionId }) => {
+      if (this.userId !== userId) return;
+      if (this.sessionId !== sessionId) return;
+      this?.onAccountChange({ account, userId })
+    })
+
+  }
+
 }
 
 class Bot {
   private client: Client<boolean>;
   private io: IO;
-  private socket: IoSocket;
   private rest: REST;
   private users: { [key: string]: User | undefined } = {};
   constructor({
     client,
-    io,
     rest,
   }: {
     client: Client<boolean>;
-    io: IO;
     rest: REST;
+    io: IO;
   }) {
     this.client = client;
-    this.io = io;
     this.rest = rest;
+    this.io = io;
   }
 
   public setCommands = () => {
@@ -193,31 +175,12 @@ class Bot {
             return;
           }
 
-          this.users[interaction.user.id]?.removeAccountListener();
-
           delete this.users[interaction.user.id];
           interaction.reply({ content: "disconnected", ephemeral: true });
         }
       });
     });
     this.client.login(process.env.TOKEN);
-  };
-
-  public runSocket = ({ id }: { id: string }) => {
-    const accountListener = (socket: IoSocket) => {
-      this.socket = socket;
-      this.socket.emit("userId", { userId: id });
-      this.socket.on("account", ({ account, userId }) => {
-        console.log({ account, userId, id })
-        if(id !== userId) return;
-
-        const user = this.users[userId]
-        user?.onAccountChange({ account, userId })
-      })
-      //this.io.off("connection", accountListener)
-    }
-    // this.io.off("connection", accountListener)
-    this.io.on("connection", accountListener);
   };
 
   public createUser = ({
@@ -227,17 +190,28 @@ class Bot {
     channelId: string;
     userId: string;
   }) => {
-    const user = new User({
-      client: this.client,
-      channelId,
-      userId,
-    });
-    this.users[userId] = user;
-    this.runSocket({ id: userId });
+
+    this.io.removeAllListeners("connection")
+    const connectListener =  (socket: IoSocket) => {
+      if (this.users[userId]) return
+
+      const user = new User({
+        client: this.client,
+        channelId,
+        userId,
+        sessionId: socket.id,
+      });      
+
+      socket.emit("userId", { userId });
+      this.users[userId] = user;
+      this.users[userId]?.accountListener({ socket })
+
+    }
+    this.io.on("connection", connectListener);
   };
 }
 
-const bot = new Bot({ client, io, rest });
+const bot = new Bot({ client, rest, io });
 bot.setCommands();
 bot.runClient();
 
