@@ -14,10 +14,9 @@ config();
 const app = express();
 const DEFAULT_PORT = 3334;
 const PORT = process.env.PORT || DEFAULT_PORT;
-const URL =`http://localhost:${DEFAULT_PORT}/`
-  // process.env.NODE_ENV === "development"
-  //   ? `http://localhost:${DEFAULT_PORT}/`
-  //   : `https://web3-discord-bot.herokuapp.com/`;
+const URL = process.env.NODE_ENV === "development"
+  ? `http://localhost:${DEFAULT_PORT}/`
+  : `https://web3-discord-bot.herokuapp.com/`;
 const INDEX = "/index.html";
 
 const server = app
