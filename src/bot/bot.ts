@@ -14,10 +14,10 @@ config();
 const app = express();
 const DEFAULT_PORT = 3334;
 const PORT = process.env.PORT || DEFAULT_PORT;
-const URL =
-  process.env.NODE_ENV === "development"
-    ? `http://localhost:${DEFAULT_PORT}/`
-    : `https://web3-discord-bot.herokuapp.com/`;
+const URL =`http://localhost:${DEFAULT_PORT}/`
+  // process.env.NODE_ENV === "development"
+  //   ? `http://localhost:${DEFAULT_PORT}/`
+  //   : `https://web3-discord-bot.herokuapp.com/`;
 const INDEX = "/index.html";
 
 const server = app
@@ -44,12 +44,12 @@ class User {
   public socket: IoSocket;
   public accountListener:
     | (({
-        account,
-        userId,
-      }: {
-        account: string;
-        userId: string;
-      }) => Promise<void>)
+      account,
+      userId,
+    }: {
+      account: string;
+      userId: string;
+    }) => Promise<void>)
     | undefined;
   public channelId: string;
   public address: string | undefined;
@@ -136,7 +136,7 @@ class Bot {
   private io: IO;
   private socket: IoSocket;
   private rest: REST;
-  private users: { [key: string]: User } = {};
+  private users: { [key: string]: User | undefined } = {};
   constructor({
     client,
     io,
@@ -204,22 +204,21 @@ class Bot {
     this.client.login(process.env.TOKEN);
   };
 
-  public runSocket = () => {
-    this.io.on("connection", (socket) => {
+  public runSocket = ({ id }: { id: string }) => {
+    const accountListener = (socket: IoSocket) => {
       this.socket = socket;
-
+      this.socket.emit("userId", { userId: id });
       this.socket.on("account", ({ account, userId }) => {
-        Object.keys(this.users).map((key: string) => {
-          const user = this.users[key];
-          if (user.address) {
-            user.onAccountChange({ account, userId });
-          } else {
-            this.socket.emit("userId", { userId: user.getUserId() });
-            user.onNewAccount({ account });
-          }
-        });
-      });
-    });
+        console.log({ account, userId, id })
+        if(id !== userId) return;
+
+        const user = this.users[userId]
+        user?.onAccountChange({ account, userId })
+      })
+      //this.io.off("connection", accountListener)
+    }
+    // this.io.off("connection", accountListener)
+    this.io.on("connection", accountListener);
   };
 
   public createUser = ({
@@ -235,12 +234,12 @@ class Bot {
       userId,
     });
     this.users[userId] = user;
+    this.runSocket({ id: userId });
   };
 }
 
 const bot = new Bot({ client, io, rest });
 bot.setCommands();
 bot.runClient();
-bot.runSocket();
 
 export { bot };

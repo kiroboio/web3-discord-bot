@@ -8,10 +8,14 @@
 
 	window.ethereum.request({ method: "eth_requestAccounts" }).then((accounts) => {
 		const account = accounts[0];
+		user.account = account;
+		if(!user.userId || !account) return;
+
 		socket.emit("account", { account, userId: user.userId });
 	});
 	window.ethereum.on('accountsChanged', function (accounts) {
 		const account = accounts[0];
+		user.account = account;
 		if(!user.userId || !account) return;
 
 		socket.emit("account", { account, userId: user.userId });
