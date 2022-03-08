@@ -185,7 +185,7 @@ class Bot {
             userId: interaction.user.id,
             channelId: interaction.channelId,
           });
-          interaction.reply({ content: URL, ephemeral: true });
+          interaction.reply({ content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`, ephemeral: true });
         }
         if (interaction.commandName === "disconnect") {
           if (!this.users[interaction.user.id]) {
