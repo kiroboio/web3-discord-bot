@@ -24,7 +24,7 @@ const builders_1 = require("@discordjs/builders");
 const path_1 = __importDefault(require("path"));
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
-app.use(express_1.default.static(path_1.default.join(__dirname, "..", "client/build")));
+app.use(express_1.default.static(path_1.default.join(__dirname, "../../", "client/build")));
 const DEFAULT_PORT = 3334;
 const PORT = process.env.PORT || DEFAULT_PORT;
 const URL = process.env.NODE_ENV === "development"
@@ -47,10 +47,8 @@ class User {
             var _a;
             (_a = this.client.users.cache.get(this.userId)) === null || _a === void 0 ? void 0 : _a.send(message);
         };
-        this.onAccountChange = ({ account, userId, }) => __awaiter(this, void 0, void 0, function* () {
-            if (!userId)
-                return;
-            if (userId !== this.userId)
+        this.onAccountChange = ({ account, sessionId }) => __awaiter(this, void 0, void 0, function* () {
+            if (this.sessionId !== sessionId)
                 return;
             if (!account || account === this.address)
                 return;
@@ -75,12 +73,10 @@ class User {
         this.accountListener = ({ socket }) => {
             if (this.sessionId !== socket.id)
                 return;
-            socket.on("account", ({ account, userId, sessionId }) => {
-                if (this.userId !== userId)
-                    return;
+            socket.on("account", ({ account, sessionId }) => {
                 if (this.sessionId !== sessionId)
                     return;
-                this === null || this === void 0 ? void 0 : this.onAccountChange({ account, userId });
+                this === null || this === void 0 ? void 0 : this.onAccountChange({ account, sessionId });
             });
         };
         this.client = client;
@@ -154,7 +150,6 @@ class Bot {
                     userId,
                     sessionId: socket.id,
                 });
-                socket.emit("userId", { userId });
                 this.users[userId] = user;
                 (_a = this.users[userId]) === null || _a === void 0 ? void 0 : _a.accountListener({ socket });
             };

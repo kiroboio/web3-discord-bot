@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "dist/server",
     "module": "commonjs",
     "target": "es6",
     "lib": ["es6", "dom"],
@@ -21,6 +21,6 @@
     "baseUrl": "./",
     "jsx": "react-jsx"
   },
-  "include": ["src"],
+  "include": ["src/server"],
   "exclude": ["node_modules", "dist"]
 }
