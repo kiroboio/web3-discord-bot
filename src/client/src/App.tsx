@@ -43,6 +43,8 @@ function App() {
   socket.on("connect", () => {
     console.log("connect")
 		user.sessionId = socket.id
+    if (!user.account) return;
+    socket.emit("account", { account: user.account, sessionId: user.sessionId });
 	});
 
 	// socket.on("userId", ({ userId }) => {
@@ -55,6 +57,8 @@ function App() {
 
   return (
     <div className="App">
+      {user.account}
+      {user.sessionId}
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
       </header>
