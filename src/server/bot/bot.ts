@@ -24,7 +24,7 @@ const URL =
 const INDEX = "/index.html";
 
 const server = app
-  .use((_req, res) => {
+  .get("/", (_req, res) => {
     res.sendFile(INDEX);
   })
   .listen(PORT, () => console.log(`Listening on ${PORT}`));
