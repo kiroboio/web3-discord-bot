@@ -24,8 +24,7 @@ const builders_1 = require("@discordjs/builders");
 const path_1 = __importDefault(require("path"));
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
-app.use(express_1.default.static(__dirname));
-app.use(express_1.default.static(path_1.default.resolve(`node_modules`)));
+app.use(express_1.default.static(path_1.default.join(__dirname, "..", "client/build")));
 const DEFAULT_PORT = 3334;
 const PORT = process.env.PORT || DEFAULT_PORT;
 const URL = process.env.NODE_ENV === "development"
@@ -33,7 +32,9 @@ const URL = process.env.NODE_ENV === "development"
     : `https://web3-discord-bot.herokuapp.com/`;
 const INDEX = "/index.html";
 const server = app
-    .use((_req, res) => res.sendFile(INDEX, { root: __dirname }))
+    .get("/", (_req, res) => {
+    res.sendFile(INDEX);
+})
     .listen(PORT, () => console.log(`Listening on ${PORT}`));
 const clientId = process.env.CLIENT_ID || "";
 const guildId = process.env.GUILD_ID || "";
@@ -124,7 +125,10 @@ class Bot {
                             userId: interaction.user.id,
                             channelId: interaction.channelId,
                         });
-                        interaction.reply({ content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`, ephemeral: true });
+                        interaction.reply({
+                            content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`,
+                            ephemeral: true,
+                        });
                     }
                     if (interaction.commandName === "disconnect") {
                         if (!this.users[interaction.user.id]) {

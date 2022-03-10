@@ -8,19 +8,25 @@ import { Routes } from "discord-api-types/v9";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Contract } from "web3-eth-contract";
+import path from "path"
 
 config();
 
 const app = express();
+app.use(express.static(path.join(__dirname, "../../", "client/build")));
+
 const DEFAULT_PORT = 3334;
 const PORT = process.env.PORT || DEFAULT_PORT;
-const URL = process.env.NODE_ENV === "development"
-  ? `http://localhost:${DEFAULT_PORT}/`
-  : `https://web3-discord-bot.herokuapp.com/`;
+const URL =
+  process.env.NODE_ENV === "development"
+    ? `http://localhost:${DEFAULT_PORT}/`
+    : `https://web3-discord-bot.herokuapp.com/`;
 const INDEX = "/index.html";
 
 const server = app
-  .use((_req, res) => res.sendFile(INDEX, { root: __dirname }))
+  .get("/", (_req, res) => {
+    res.sendFile(INDEX);
+  })
   .listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 const clientId = process.env.CLIENT_ID || "";
@@ -64,18 +70,17 @@ class User {
     this.client = client;
     this.userId = userId;
     this.channelId = channelId;
-    this.sessionId = sessionId
+    this.sessionId = sessionId;
   }
 
   public onAccountChange = async ({
     account,
-    userId,
+    sessionId
   }: {
     account: string;
-    userId: string;
+    sessionId: string;
   }) => {
-    if (!userId) return;
-    if (userId !== this.userId) return;
+    if (this.sessionId !== sessionId) return;
     if (!account || account === this.address) return;
 
     this.address = account;
@@ -87,7 +92,6 @@ class User {
       : "vault not found";
     this.sendMessageToUser({ message: vaultContractAddress });
   };
-
 
   public getUserId = () => {
     return this.userId;
@@ -104,14 +108,11 @@ class User {
   public accountListener = ({ socket }: { socket: IoSocket }) => {
     if (this.sessionId !== socket.id) return;
 
-    socket.on("account", ({ account, userId, sessionId }) => {
-      if (this.userId !== userId) return;
+    socket.on("account", ({ account, sessionId }) => {
       if (this.sessionId !== sessionId) return;
-      this?.onAccountChange({ account, userId })
-    })
-
-  }
-
+      this?.onAccountChange({ account, sessionId });
+    });
+  };
 }
 
 class Bot {
@@ -167,7 +168,10 @@ class Bot {
             userId: interaction.user.id,
             channelId: interaction.channelId,
           });
-          interaction.reply({ content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`, ephemeral: true });
+          interaction.reply({
+            content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`,
+            ephemeral: true,
+          });
         }
         if (interaction.commandName === "disconnect") {
           if (!this.users[interaction.user.id]) {
@@ -190,23 +194,20 @@ class Bot {
     channelId: string;
     userId: string;
   }) => {
-
-    this.io.removeAllListeners("connection")
-    const connectListener =  (socket: IoSocket) => {
-      if (this.users[userId]) return
+    this.io.removeAllListeners("connection");
+    const connectListener = (socket: IoSocket) => {
+      if (this.users[userId]) return;
 
       const user = new User({
         client: this.client,
         channelId,
         userId,
         sessionId: socket.id,
-      });      
+      });
 
-      socket.emit("userId", { userId });
       this.users[userId] = user;
-      this.users[userId]?.accountListener({ socket })
-
-    }
+      this.users[userId]?.accountListener({ socket });
+    };
     this.io.on("connection", connectListener);
   };
 }
