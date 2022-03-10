@@ -13,7 +13,9 @@ function App() {
     sessionId: "",
   };
 
-  const socket = io();
+  
+  const HOST = window.location.origin.replace(/^http/, 'ws')
+  const socket = io(HOST);
 
 
  ethereum?.request({ method: "eth_requestAccounts" })
