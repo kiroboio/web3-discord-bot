@@ -32,7 +32,7 @@ const URL = process.env.NODE_ENV === "development"
     : `https://web3-discord-bot.herokuapp.com/`;
 const INDEX = "/index.html";
 const server = app
-    .get("/", (_req, res) => {
+    .use((_req, res) => {
     res.sendFile(INDEX);
 })
     .listen(PORT, () => console.log(`Listening on ${PORT}`));
@@ -47,7 +47,7 @@ class User {
             var _a;
             (_a = this.client.users.cache.get(this.userId)) === null || _a === void 0 ? void 0 : _a.send(message);
         };
-        this.onAccountChange = ({ account, sessionId }) => __awaiter(this, void 0, void 0, function* () {
+        this.onAccountChange = ({ account, sessionId, }) => __awaiter(this, void 0, void 0, function* () {
             if (this.sessionId !== sessionId)
                 return;
             if (!account || account === this.address)

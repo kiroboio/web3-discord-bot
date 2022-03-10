@@ -8,7 +8,7 @@ import { Routes } from "discord-api-types/v9";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Contract } from "web3-eth-contract";
-import path from "path"
+import path from "path";
 
 config();
 
@@ -24,7 +24,7 @@ const URL =
 const INDEX = "/index.html";
 
 const server = app
-  .get("/", (_req, res) => {
+  .use((_req, res) => {
     res.sendFile(INDEX);
   })
   .listen(PORT, () => console.log(`Listening on ${PORT}`));
@@ -75,7 +75,7 @@ class User {
 
   public onAccountChange = async ({
     account,
-    sessionId
+    sessionId,
   }: {
     account: string;
     sessionId: string;
