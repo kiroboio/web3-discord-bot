@@ -1,4 +1,10 @@
-import { CacheType, Client, CommandInteraction, Intents } from "discord.js";
+import {
+  CacheType,
+  Client,
+  CommandInteraction,
+  Intents,
+  MessageEmbed,
+} from "discord.js";
 import express from "express";
 import { Server, Socket } from "socket.io";
 import { Vault } from "../web3/Vault";
@@ -176,31 +182,52 @@ class Bot {
           const that = this;
           crypto.randomBytes(48, async (_err, buffer) => {
             const token = buffer.toString("hex");
-            const guild = that.client.guilds.cache.get(interaction?.guild?.id || "");
-            const user = guild?.members.cache.get(interaction.user.id);
-            const presence = user?.guild.presences.cache.get(interaction.user.id);
 
-          
-            const desktopLink = `[connect vault](${URL}?token=${token})`;
-            const mobileLink = `[connect vault in metamask browser](${URL_METAMASK}?token=${token})`;
-            if(presence?.clientStatus?.mobile !== 'online') {
+            const guild = that.client.guilds.cache.get(
+              interaction?.guild?.id || ""
+            );
+            const user = guild?.members.cache.get(interaction.user.id);
+            const presence = user?.guild.presences.cache.get(
+              interaction.user.id
+            );
+
+            const desktopLink = `${URL}?token=${token}`;
+            const mobileLink = `${URL_METAMASK}?token=${token}`;
+
+            const embedDesktopLink = new MessageEmbed()
+              .setColor("#0099ff")
+              .setTitle("Connect")
+              .setURL(desktopLink)
+              .setDescription(`Connect to metamask account`);
+
+            const embedMobileLink = new MessageEmbed()
+              .setColor("#0099ff")
+              .setTitle("Connect")
+              .setURL(mobileLink)
+              .setDescription(
+                `Connect to metamask account in metamask browser`
+              );
+
+            if (presence?.clientStatus?.mobile !== "online") {
               interaction.reply({
-                content: desktopLink,
+                embeds: [embedDesktopLink],
                 ephemeral: true,
               });
-            } else if(presence?.clientStatus?.desktop !== 'online' && presence?.clientStatus?.web !== 'online') {
+            } else if (
+              presence?.clientStatus?.desktop !== "online" &&
+              presence?.clientStatus?.web !== "online"
+            ) {
               interaction.reply({
-                content: mobileLink,
+                embeds: [embedMobileLink],
                 ephemeral: true,
               });
             } else {
               interaction.reply({
-                content: `${desktopLink}\n${mobileLink}`,
+                embeds: [embedDesktopLink, embedMobileLink],
                 ephemeral: true,
               });
             }
-            
-        
+
             that.createUser({
               userId: interaction.user.id,
               channelId: interaction.channelId,

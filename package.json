@@ -38,7 +38,6 @@
     "@types/react-dom": "^17.0.13",
     "bufferutil": "^4.0.6",
     "discord-api-types": "^0.26.1",
-    "discord-buttons": "^4.0.0-deprecated",
     "discord.js": "^13.6.0",
     "dotenv": "^16.0.0",
     "express": "^4.17.3",
