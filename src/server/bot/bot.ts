@@ -22,7 +22,8 @@ const URL =
   process.env.NODE_ENV === "development"
     ? `http://localhost:${DEFAULT_PORT}`
     : `https://web3-discord-bot.herokuapp.com`;
-const URL_METAMASK = "https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com";
+const URL_METAMASK =
+  "https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com";
 const INDEX = "/index.html";
 
 const server = app
@@ -42,7 +43,9 @@ type IoSocket = Socket<
 >;
 
 const io: IO = new Server(server);
-const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
+const client = new Client({
+  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES],
+});
 const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
 class User {
@@ -163,6 +166,7 @@ class Bot {
     this.client.once("ready", () => {
       this.client.on("interactionCreate", async (interaction) => {
         if (!interaction.isCommand()) return;
+        // console.log({ interaction }, interaction.user)
         if (interaction.commandName === "connect") {
           if (this.users[interaction.user.id]) {
             interaction.reply("already connected");
@@ -170,17 +174,38 @@ class Bot {
           }
 
           const that = this;
-          crypto.randomBytes(48, function (_err, buffer) {
+          crypto.randomBytes(48, async (_err, buffer) => {
             const token = buffer.toString("hex");
-            interaction.reply({
-              content: `desktop: [connect vault](${URL}?token=${token})\nmobile: [metamask app](${URL_METAMASK}?token=${token})`,
-              ephemeral: true,
-            });
+            const guild = that.client.guilds.cache.get(interaction?.guild?.id || "");
+            const user = guild?.members.cache.get(interaction.user.id);
+            const presence = user?.guild.presences.cache.get(interaction.user.id);
+
+          
+            const desktopLink = `[connect vault](${URL}?token=${token})`;
+            const mobileLink = `[connect vault in metamask browser](${URL_METAMASK}?token=${token})`;
+            if(presence?.clientStatus?.mobile !== 'online') {
+              interaction.reply({
+                content: desktopLink,
+                ephemeral: true,
+              });
+            } else if(presence?.clientStatus?.desktop !== 'online' && presence?.clientStatus?.web !== 'online') {
+              interaction.reply({
+                content: mobileLink,
+                ephemeral: true,
+              });
+            } else {
+              interaction.reply({
+                content: `${desktopLink}\n${mobileLink}`,
+                ephemeral: true,
+              });
+            }
+            
+        
             that.createUser({
               userId: interaction.user.id,
               channelId: interaction.channelId,
               token: { token },
-              interaction
+              interaction,
             });
           });
         }
@@ -207,16 +232,18 @@ class Bot {
     channelId: string;
     userId: string;
     token: { token: string };
-    interaction: CommandInteraction<CacheType>
+    interaction: CommandInteraction<CacheType>;
   }) => {
     const connectListener = (socket: IoSocket) => {
-      if(token.token === "") {
-        interaction.editReply({ content: "Your token has expired try to '/connect' again" });
+      if (token.token === "") {
+        interaction.editReply({
+          content: "Your token has expired try to '/connect' again",
+        });
         return;
       }
       if (this.users[userId]) return;
       if (socket.handshake.query.token !== token.token) return;
-      token.token = ""
+      token.token = "";
       const user = new User({
         client: this.client,
         channelId,
@@ -228,7 +255,7 @@ class Bot {
       this.users[userId]?.accountListener({ socket });
     };
     setTimeout(() => {
-      token.token = ""
+      token.token = "";
     }, 60000);
     this.io.on("connection", connectListener);
   };
