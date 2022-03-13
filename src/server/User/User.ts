@@ -130,7 +130,6 @@ export class User {
       url: "https://vault.kirobo.me",
       description: vaultContractAddress,
       thumbnail: `${URL}/images/vault.png`,
-      image: `${URL}/images/vault.png`,
     });
   };
 }
