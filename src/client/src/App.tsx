@@ -1,37 +1,32 @@
-
 import logo from "./logo.svg";
 import { io } from "socket.io-client";
 import "./App.css";
 
-function App() {
+const App = () => {
   // @ts-expect-error: ethereum exist in browser with metamask
-  const ethereum = window.ethereum
-  console.log({ selectedAcc: ethereum?.selectedAddress })
+  const ethereum = window.ethereum;
   const user = {
-    userId: "",
     account: ethereum?.selectedAddress,
     sessionId: "",
   };
 
-  
-  const HOST = window.location.origin.replace(/^http/, 'ws')
-  const socket = io(HOST);
-
-
- ethereum?.request({ method: "eth_requestAccounts" })
+  const HOST = window.location.origin.replace(/^http/, "ws");
+  const params = new URLSearchParams(window.location.search);
+  const socket = io(HOST, { query: { token: params.get('token')} });
+  window.history.replaceState({}, document.title, "/");
+  ethereum
+    ?.request({ method: "eth_requestAccounts" })
     .then((accounts: string[]) => {
       const account = accounts[0];
       user.account = account;
-      console.log({ accounts, user })
       if (!account) return;
 
       socket.emit("account", { account, sessionId: user.sessionId });
     });
-  
+
   ethereum?.on("accountsChanged", function (accounts: string[]) {
     const account = accounts[0];
     user.account = account;
-    console.log({ accounts })
     if (!account) return;
 
     socket.emit("account", {
@@ -41,24 +36,16 @@ function App() {
   });
 
   socket.on("connect", () => {
-    console.log("connect")
-		user.sessionId = socket.id
+    user.sessionId = socket.id;
     if (!user.account) return;
-    socket.emit("account", { account: user.account, sessionId: user.sessionId });
-	});
-
-	// socket.on("userId", ({ userId }) => {
-  //   user.userId = userId
-  //   console.log("userId", { user })
-	// 	if (!user.account) return;
-
-	// 	socket.emit("account", { account: user.account, userId: user.userId, sessionId: user.sessionId });
-	// })
+    socket.emit("account", {
+      account: user.account,
+      sessionId: user.sessionId,
+    });
+  });
 
   return (
     <div className="App">
-      {user.account}
-      {user.sessionId}
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
       </header>

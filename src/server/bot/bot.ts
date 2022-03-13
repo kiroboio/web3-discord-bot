@@ -9,6 +9,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Contract } from "web3-eth-contract";
 import path from "path";
+import crypto from "crypto";
 
 config();
 
@@ -19,8 +20,9 @@ const DEFAULT_PORT = 3334;
 const PORT = process.env.PORT || DEFAULT_PORT;
 const URL =
   process.env.NODE_ENV === "development"
-    ? `http://localhost:${DEFAULT_PORT}/`
-    : `https://web3-discord-bot.herokuapp.com/`;
+    ? `http://localhost:${DEFAULT_PORT}`
+    : `https://web3-discord-bot.herokuapp.com`;
+const URL_METAMASK = "https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com";
 const INDEX = "/index.html";
 
 const server = app
@@ -30,7 +32,6 @@ const server = app
   .listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 const clientId = process.env.CLIENT_ID || "";
-const guildId = process.env.GUILD_ID || "";
 
 type IO = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
 type IoSocket = Socket<
@@ -133,7 +134,11 @@ class Bot {
     this.io = io;
   }
 
-  public setCommands = () => {
+  public setCommands = ({ guilds }: { guilds: string[] }) => {
+    guilds.map(this.setCommand);
+  };
+
+  public setCommand = (guildId: string) => {
     const commands = [
       new SlashCommandBuilder()
         .setName("connect")
@@ -164,13 +169,18 @@ class Bot {
             return;
           }
 
-          this.createUser({
-            userId: interaction.user.id,
-            channelId: interaction.channelId,
-          });
-          interaction.reply({
-            content: `web: ${URL} metamask: ${`https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com`}`,
-            ephemeral: true,
+          const that = this;
+          crypto.randomBytes(48, function (_err, buffer) {
+            const token = buffer.toString("hex");
+            interaction.reply({
+              content: `desktop: [connect vault](${URL}?token=${token})\nmobile: [metamask app](${URL_METAMASK}?token=${token})`,
+              ephemeral: true,
+            });
+            that.createUser({
+              userId: interaction.user.id,
+              channelId: interaction.channelId,
+              token,
+            });
           });
         }
         if (interaction.commandName === "disconnect") {
@@ -190,14 +200,21 @@ class Bot {
   public createUser = ({
     userId,
     channelId,
+    token,
   }: {
     channelId: string;
     userId: string;
+    token: string;
   }) => {
-    this.io.removeAllListeners("connection");
+    // this.io.removeAllListeners("connection");
     const connectListener = (socket: IoSocket) => {
       if (this.users[userId]) return;
+      console.log({
+        clientToken: socket.handshake.query.token,
+        discordToken: token,
+      });
 
+      if (socket.handshake.query.token !== token) return;
       const user = new User({
         client: this.client,
         channelId,
@@ -213,7 +230,16 @@ class Bot {
 }
 
 const bot = new Bot({ client, rest, io });
-bot.setCommands();
+
+client.on("ready", () => {
+  const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
+  bot.setCommands({ guilds });
+});
+
+client.on("guildCreate", (guild) => {
+  bot.setCommand(guild.id);
+});
+
 bot.runClient();
 
 export { bot };
