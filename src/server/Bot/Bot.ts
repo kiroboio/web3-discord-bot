@@ -11,16 +11,11 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import crypto from "crypto";
 import { User } from "../User";
-import { DEFAULT_PORT } from "../constants";
+import { URL, URL_METAMASK } from "../constants";
 
 config();
 
-const URL =
-  process.env.NODE_ENV === "development"
-    ? `http://localhost:${DEFAULT_PORT}`
-    : `https://web3-discord-bot.herokuapp.com`;
-const URL_METAMASK =
-  "https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com";
+
 
 const clientId = process.env.CLIENT_ID || "";
 

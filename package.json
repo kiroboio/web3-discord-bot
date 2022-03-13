@@ -42,6 +42,7 @@
     "dotenv": "^16.0.0",
     "express": "^4.17.3",
     "socket.io": "^4.4.1",
+    "svg-png-converter": "^0.0.9",
     "utf-8-validate": "^5.0.8",
     "web3": "^1.7.1",
     "web3-eth-contract": "^1.7.1",
