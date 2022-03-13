@@ -13,7 +13,7 @@ config();
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../", "client/build")));
-app.use('/images', express.static(path.join(__dirname, "./", "images")));
+app.use('/images', express.static(path.join(__dirname, "../", "images")));
 
 const PORT = process.env.PORT || DEFAULT_PORT;
 const INDEX = "/index.html";
