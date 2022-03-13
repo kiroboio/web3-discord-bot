@@ -1,4 +1,4 @@
-import { Client, Intents } from "discord.js";
+import { CacheType, Client, CommandInteraction, Intents } from "discord.js";
 import express from "express";
 import { Server, Socket } from "socket.io";
 import { Vault } from "../web3/Vault";
@@ -179,7 +179,8 @@ class Bot {
             that.createUser({
               userId: interaction.user.id,
               channelId: interaction.channelId,
-              token,
+              token: { token },
+              interaction
             });
           });
         }
@@ -201,20 +202,21 @@ class Bot {
     userId,
     channelId,
     token,
+    interaction,
   }: {
     channelId: string;
     userId: string;
-    token: string;
+    token: { token: string };
+    interaction: CommandInteraction<CacheType>
   }) => {
-    // this.io.removeAllListeners("connection");
     const connectListener = (socket: IoSocket) => {
+      if(token.token === "") {
+        interaction.editReply({ content: "Your token has expired try to '/connect' again" });
+        return;
+      }
       if (this.users[userId]) return;
-      console.log({
-        clientToken: socket.handshake.query.token,
-        discordToken: token,
-      });
-
-      if (socket.handshake.query.token !== token) return;
+      if (socket.handshake.query.token !== token.token) return;
+      token.token = ""
       const user = new User({
         client: this.client,
         channelId,
@@ -225,6 +227,9 @@ class Bot {
       this.users[userId] = user;
       this.users[userId]?.accountListener({ socket });
     };
+    setTimeout(() => {
+      token.token = ""
+    }, 60000);
     this.io.on("connection", connectListener);
   };
 }
