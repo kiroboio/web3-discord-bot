@@ -6,3 +6,5 @@ export const URL =
     : `https://web3-discord-bot.herokuapp.com`;
 export const URL_METAMASK =
   "https://metamask.app.link/dapp/web3-discord-bot.herokuapp.com";
+export const IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
+export const VAULT_URL = 'https://vault.kirobo.me';

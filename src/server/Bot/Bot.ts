@@ -1,8 +1,4 @@
-import {
-  Client,
-  MessageEmbed,
-  Presence,
-} from "discord.js";
+import { Client, MessageEmbed, Presence } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -12,10 +8,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import crypto from "crypto";
 import { User } from "../User";
 import { URL, URL_METAMASK } from "../constants";
-
 config();
-
-
 
 const clientId = process.env.CLIENT_ID || "";
 
@@ -59,8 +52,14 @@ export class Bot {
         .setName("disconnect")
         .setDescription("Disconnect metamask"),
       new SlashCommandBuilder()
-        .setName("vault")
-        .setDescription("Replies with vault address"),
+        .setName("get-nfts")
+        .setDescription("get nfts data"),
+      new SlashCommandBuilder()
+        .setName("send-nft")
+        .setDescription("send nft image"),
+      // new SlashCommandBuilder()
+      //   .setName("send-nft")
+      //   .addUserOption(new SlashCommandUserOption())
     ].map((command) => command.toJSON());
 
     this.rest
@@ -77,9 +76,13 @@ export class Bot {
         if (!interaction.isCommand()) return;
         if (interaction.commandName === "connect") {
           if (this.users[interaction.user.id]) {
-            interaction.reply({ content: "already connected", ephemeral: true});
+            interaction.reply({
+              content: "already connected",
+              ephemeral: true,
+            });
             return;
           }
+          console.log({ options: interaction.options });
           crypto.randomBytes(48, async (_err, buffer) => {
             const token = buffer.toString("hex");
             const guild = this.client.guilds.cache.get(
@@ -97,6 +100,7 @@ export class Bot {
               userId: interaction.user.id,
               channelId: interaction.channelId,
               token: { token },
+              guildId: interaction?.guild?.id || "",
             });
           });
         }
@@ -109,6 +113,25 @@ export class Bot {
           delete this.users[interaction.user.id];
           interaction.reply({ content: "disconnected", ephemeral: true });
         }
+
+        if (interaction.commandName === "get-nfts") {
+          const user = this.users[interaction.user.id];
+          if (!user) {
+            interaction.reply({ content: "not connected", ephemeral: true });
+          }
+
+          await user?.getNfts({ chain: "rinkeby" });
+          //console.log({ nfts })
+        }
+        if (interaction.commandName === "send-nft") {
+          const user = this.users[interaction.user.id];
+          if (!user) {
+            interaction.reply({ content: "not connected", ephemeral: true });
+          }
+
+          await user?.sendNftToChannel({ name: "lol" });
+          //console.log({ nfts })
+        }
       });
     });
     this.client.login(process.env.TOKEN);
@@ -118,10 +141,12 @@ export class Bot {
     userId,
     channelId,
     token,
+    guildId,
   }: {
     channelId: string;
     userId: string;
     token: { token: string };
+    guildId: string;
   }) => {
     const connectListener = (socket: IoSocket) => {
       if (token.token === "") {
@@ -135,6 +160,7 @@ export class Bot {
         channelId,
         userId,
         sessionId: socket.id,
+        guildId,
       });
 
       this.users[userId] = user;
