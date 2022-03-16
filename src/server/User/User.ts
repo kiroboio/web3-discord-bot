@@ -1,9 +1,4 @@
-import {
-  Client,
-  ColorResolvable,
-  MessageEmbed,
-  TextChannel,
-} from "discord.js";
+import { Client, ColorResolvable, MessageEmbed } from "discord.js";
 import express from "express";
 import { Socket } from "socket.io";
 import { Vault } from "../Web3/Vault";
@@ -29,15 +24,20 @@ type IoSocket = Socket<
   any
 >;
 
+type NFT = {
+  name: string;
+  value: string;
+};
 export class User {
   public guildId: string;
 
-  private channelId: string;
+  public channelId: string;
   private client: Client<boolean>;
   private sessionId: string;
   private address: string | undefined;
   private userId: string;
   private vaultContract: Contract | undefined;
+  public nfts: NFT[] = [];
 
   constructor({
     client,
@@ -119,14 +119,9 @@ export class User {
     this.client.users.cache.get(this.userId)?.send({ embeds: [embed] });
   };
 
-
   private sendMessageToChannel = ({
     color = COLORS.primary,
-    title,
-    url,
-    description,
-    image,
-    thumbnail,
+    uris,
   }: {
     color?: ColorResolvable;
     title?: string;
@@ -134,39 +129,42 @@ export class User {
     description?: string;
     image?: string;
     thumbnail?: string;
+    uris?: string[];
   }) => {
-    const embed = new MessageEmbed().setColor(color);
-    if (title) {
-      embed.setTitle(title);
-    }
+    const embeds: MessageEmbed[] = [];
+    const user = this.client.users.cache.get(this.userId);
 
-    if (url) {
-      embed.setURL(url);
-    }
+    uris?.map((uri) => {
+      const embed = new MessageEmbed().setColor(color);
+      embed.setThumbnail(uri);
+      embeds.push(embed);
+    });
 
-    if (description) {
-      embed.setDescription(description);
-    }
-
-    if (image) {
-      embed.setImage(image);
-    }
-
-    if (thumbnail) {
-      embed.setThumbnail(thumbnail);
-    }
-
-    const channel = this.client.channels.cache.get(this.channelId) as TextChannel
-    channel.send({ embeds: [embed] });
+    user?.send({ embeds, options: {} });
   };
 
+  public getNftMessage = ({
+    uri,
+    color = COLORS.primary,
+  }: {
+    uri: string;
+    color?: ColorResolvable;
+  }) => {
   
+
+    const embed = new MessageEmbed().setColor(color);
+    embed.setImage(uri);
+
+    return embed
+  };
 
   public getNfts = async ({ chain }: { chain: "rinkeby" | "eth" }) => {
     const vaultAddress = this.vaultContract?.options?.address;
+
     const url = `${VAULT_URL}/api/nfts/${this.address}${
       vaultAddress ? `;${vaultAddress}` : ""
     }?chain=${chain}`;
+    console.log({ address: this.address, vaultAddress })
     const res = await axios
       .get(url, {
         headers: {
@@ -181,12 +179,12 @@ export class User {
           ...response.data,
           result: await Promise.all(
             response.data[0]?.nfts.map(
-              async (nft: any) => await this.transformNft(nft)
+              async (nft: any) => await this.transformNft(nft) as NFT
             ) || []
           ),
           result_vault: await Promise.all(
             response.data[1]?.nfts.map(
-              async (nft: any) => await this.transformNft(nft)
+              async (nft: any) => await this.transformNft(nft) as NFT
             ) || []
           ),
         };
@@ -194,40 +192,32 @@ export class User {
       .catch((e) => {
         console.error({ error: e });
       });
-
-    return res;
+    
+    const nfts: NFT[] = res.result.filter((nft: NFT) => !!nft).concat(res.result_vault.filter((nft: NFT) => !!nft))
+    if(!nfts.length) return nfts;
+    this.sendMessageToChannel({
+      uris: nfts.map((nft) => nft.value),
+      title: "test",
+    });
+    return nfts;
   };
 
   private transformNft = async (nft: any) => {
-    const nftUriArray = nft.token_uri.split(",");
     let token_uri: string | undefined;
-    if (nftUriArray[0] === "data:application/json;base64") {
-      token_uri = JSON.parse(atob(nftUriArray[nftUriArray.length - 1]))?.image;
-    } else {
-      token_uri = await this.tryGetImage({ url: String(nft.token_uri) });
-      if (token_uri)
-        this.downloadImage({
-          url: token_uri,
-          name: nft.name,
-        });
+    // const nftUriArray = nft.token_uri.split(",");
+    // if (nftUriArray[0] === "data:application/json;base64") {
+    //   token_uri = JSON.parse(atob(nftUriArray[nftUriArray.length - 1]))?.image;
+    // } else {
+    // }
+    token_uri = await this.tryGetImage({ url: String(nft.token_uri) });
+    if (token_uri) {
+      return ({
+        name: nft.name.trim().split(" ").join("-").toLowerCase(),
+        value: token_uri,
+      });
     }
 
-    return {
-      amount: String(nft.amount),
-      block_number: String(nft.block_number),
-      block_number_minted: String(nft.block_number_minted),
-      contract_type: String(nft.contract_type),
-      frozen: Number(nft.frozen),
-      isValid: Number(nft.isValid),
-      metadata: String(nft.metadata || "{}"),
-      name: String(nft.name),
-      owner_of: String(nft.owner_of),
-      symbol: String(nft.symbol),
-      synced_at: String(nft.synced_at),
-      token_address: String(nft.token_address),
-      token_id: String(nft.token_id),
-      token_uri,
-    };
+    return undefined;
   };
 
   private ipfsToHttps = (uri: string) => {
@@ -263,7 +253,7 @@ export class User {
       });
   };
 
-  private downloadImage = async ({
+  public downloadImage = async ({
     url,
     name,
   }: {
@@ -283,22 +273,20 @@ export class User {
             data.read()
           );
 
-          console.log({});
         });
       })
       .end();
   };
 
-  public sendNftToChannel = ({ name }: { name: string}) => {
+  // public sendNftToChannel = ({ name, uris }: { name: string, uris: string[]}) => {
 
-    this.sendMessageToChannel({
-      title: "Your Vault",
-      url: VAULT_URL,
-      description: name,
-      image: `${URL}/images/nfts/Twerky Bags.png`,
-    });
-    
-  }
+  //   this.sendMessageToChannel({
+  //     title: name,
+  //     url: uri,
+  //     image: uri,
+  //   });
+
+  // }
 
   private onAccountChange = async ({
     account,
