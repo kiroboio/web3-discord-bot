@@ -14,6 +14,10 @@ import fs from "fs";
 
 config();
 
+const lol1RoleId = "953629558685458462";
+const lol2RoleId = "953629686506860587";
+const lol3RoleId = "953629734418415616";
+
 const app = express();
 app.use(express.static(path.join(__dirname, "../../", "client/build")));
 
@@ -150,12 +154,10 @@ export class User {
     uri: string;
     color?: ColorResolvable;
   }) => {
-  
-
     const embed = new MessageEmbed().setColor(color);
     embed.setImage(uri);
 
-    return embed
+    return embed;
   };
 
   public getNfts = async ({ chain }: { chain: "rinkeby" | "eth" }) => {
@@ -164,7 +166,7 @@ export class User {
     const url = `${VAULT_URL}/api/nfts/${this.address}${
       vaultAddress ? `;${vaultAddress}` : ""
     }?chain=${chain}`;
-    console.log({ address: this.address, vaultAddress })
+    console.log({ address: this.address, vaultAddress });
     const res = await axios
       .get(url, {
         headers: {
@@ -179,12 +181,12 @@ export class User {
           ...response.data,
           result: await Promise.all(
             response.data[0]?.nfts.map(
-              async (nft: any) => await this.transformNft(nft) as NFT
+              async (nft: any) => (await this.transformNft(nft)) as NFT
             ) || []
           ),
           result_vault: await Promise.all(
             response.data[1]?.nfts.map(
-              async (nft: any) => await this.transformNft(nft) as NFT
+              async (nft: any) => (await this.transformNft(nft)) as NFT
             ) || []
           ),
         };
@@ -192,9 +194,11 @@ export class User {
       .catch((e) => {
         console.error({ error: e });
       });
-    
-    const nfts: NFT[] = res.result.filter((nft: NFT) => !!nft).concat(res.result_vault.filter((nft: NFT) => !!nft))
-    if(!nfts.length) return nfts;
+
+    const nfts: NFT[] = res.result
+      .filter((nft: NFT) => !!nft)
+      .concat(res.result_vault.filter((nft: NFT) => !!nft));
+    if (!nfts.length) return nfts;
     this.sendMessageToChannel({
       uris: nfts.map((nft) => nft.value),
       title: "test",
@@ -211,10 +215,10 @@ export class User {
     // }
     token_uri = await this.tryGetImage({ url: String(nft.token_uri) });
     if (token_uri) {
-      return ({
+      return {
         name: nft.name.trim().split(" ").join("-").toLowerCase(),
         value: token_uri,
-      });
+      };
     }
 
     return undefined;
@@ -272,7 +276,6 @@ export class User {
             path.join(__dirname, "../../", `images/nfts/${name}.png`),
             data.read()
           );
-
         });
       })
       .end();
@@ -313,7 +316,32 @@ export class User {
       thumbnail: `${URL}/images/vault.png`,
     });
 
-    const balance = await Vault.getKiroBalance({ address: account, chainId: 4 });
-    console.log({ balance: balance.toString() })
+    const balance = await Vault.getKiroBalance({
+      address: account,
+      chainId: 4,
+    });
+    console.log({ balance });
+    
+    const balanceNumber = parseFloat(balance);
+    const guild = this.client.guilds.cache.get(this.guildId);
+    if(!guild) return; 
+    
+    const user = guild.members.cache.get(this.userId)
+    console.log({ user })
+    if(!user) return;
+
+    const loser = guild.roles.cache.get(lol1RoleId);
+    const poor = guild.roles.cache.get(lol2RoleId);
+    const rich = guild.roles.cache.get(lol3RoleId);
+    
+    if(balanceNumber >= 0 && balanceNumber < 100 && loser) {
+      user.roles.add(loser).catch(console.error);
+    }
+    if(balanceNumber >= 100 && balanceNumber < 200 && poor) {
+      user.roles.add(poor).catch(console.error);
+    }
+    if(balanceNumber >= 200 && rich) {
+      user.roles.add(rich).catch(console.error);
+    }
   };
 }
