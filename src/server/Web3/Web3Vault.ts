@@ -1,5 +1,6 @@
 import FactoryJSON from "./abi/Factory.json";
 import WalletJSON from "./abi/Wallet.json";
+import erc20Abi from "./abi/erc20.json";
 import { AbiItem } from "web3-utils";
 import { Contract } from "web3-eth-contract";
 import Web3 from "web3";
@@ -17,6 +18,10 @@ const vaultWalletAddress = {
   notSupportedChainId: "0xba232b47a7dDFCCc221916cf08Da03a4973D3A1D",
 };
 
+const kiroboAddress = {
+  "1":"0xB1191F691A355b43542Bea9B8847bc73e7Abb137",
+  "4":"0xb678e95f83af08e7598ec21533f7585e83272799",
+}
 export class Web3Vault {
   public static isValidAddress = (address: string) => {
     const isAddress = Web3.utils.isAddress(address);
@@ -38,6 +43,20 @@ export class Web3Vault {
       const error = e as Error;
       throw new Error(error.message);
     }
+  };
+
+  public static getKiroboTokenContract = ({ chainId }: {chainId: 1 | 4}) => {
+      const chainIdText = String(chainId)
+      const erc20AbiItem = erc20Abi as AbiItem[];
+      const tokenAddress =  kiroboAddress[chainIdText]
+
+      const contract = new this.web3[chainIdText].eth.Contract(
+        erc20AbiItem,
+        tokenAddress
+      ) as unknown as Contract;
+     
+   
+      return contract;
   };
 
   public static getVaultContract = async ({

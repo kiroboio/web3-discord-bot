@@ -312,5 +312,8 @@ export class User {
       description: vaultContractAddress,
       thumbnail: `${URL}/images/vault.png`,
     });
+
+    const balance = await Vault.getKiroBalance({ address: account, chainId: 4 });
+    console.log({ balance: balance.toString() })
   };
 }
