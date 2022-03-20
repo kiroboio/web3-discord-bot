@@ -8,8 +8,13 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";
 import { Bot } from "./Bot";
 import { DEFAULT_PORT } from "./constants";
-
+import Keyv from "keyv";
 config();
+
+const mongoUrl = "mongodb://localhost:27017/local"
+
+const keyv = new Keyv(mongoUrl);
+keyv.on('error', err => console.error('Keyv connection error:', err));
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../", "client/build")));
@@ -33,7 +38,7 @@ const client = new Client({
 });
 const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
-const bot = new Bot({ client, rest, io });
+const bot = new Bot({ client, rest, io, db: keyv });
 
 client.on("ready", async() => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);

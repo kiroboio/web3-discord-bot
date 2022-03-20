@@ -8,6 +8,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import crypto from "crypto";
 import { User } from "../User";
 import { URL, URL_METAMASK } from "../constants";
+import Keyv from "keyv";
 config();
 
 const clientId = process.env.CLIENT_ID || "";
@@ -42,18 +43,22 @@ export class Bot {
   private io: IO;
   private rest: REST;
   private users: { [key: string]: User | undefined } = {};
+  private db: Keyv;
   constructor({
     client,
     rest,
     io,
+    db,
   }: {
     client: Client<boolean>;
     rest: REST;
     io: IO;
+    db: Keyv;
   }) {
     this.client = client;
     this.rest = rest;
     this.io = io;
+    this.db = db;
   }
 
   public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
@@ -149,8 +154,11 @@ export class Bot {
         .setName("send-nft")
         .setDescription("send nft image"),
       new SlashCommandBuilder()
+        .setName("get-roles")
+        .setDescription("get roles"),
+      new SlashCommandBuilder()
         .setName("add-role")
-        .setDescription("add user role")
+        .setDescription("add role")
         .setDefaultPermission(false)
     ].map((command) => command.toJSON());
 
@@ -289,12 +297,32 @@ export class Bot {
           if (!embed) return interaction.reply({ content: "not found" });
           interaction.reply({ embeds: [embed] });
         }
+
+        if (interaction.commandName === "add-role") {
+          await this.setData()
+          interaction.reply("added");
+        }
+
+        if (interaction.commandName === "get-roles") {
+          const data = await this.getData()
+
+          console.log({ data })
+          interaction.reply("added");
+        }
       });
     });
     this.client.login(process.env.TOKEN);
   };
 
-  public createUser = ({
+  private setData = async () => {
+    await this.db.set("foo", "poo")
+  }
+
+  private getData = async () => {
+    return await this.db.get("foo");
+  }
+
+  private createUser = ({
     userId,
     channelId,
     token,
