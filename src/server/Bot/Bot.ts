@@ -99,8 +99,39 @@ export class Bot {
     }
   }
 
-  public setCommands = ({ guilds }: { guilds: string[] }) => {
-    guilds.map(this.setCommand);
+  public setAdminCommandsPermissions = async ({ guilds }: { guilds: string[] }) => {
+    guilds.forEach(async (guildId) => {
+      const commands: CommandType[] = (await this.rest.get(
+        Routes.applicationGuildCommands(clientId, guildId)
+      )) as CommandType[];
+      const command = commands.find((command) => command.name === "add-role");
+      if (!command) return
+
+      const roles = this.client.guilds.cache.get(guildId)?.roles.cache.values()
+      if (!roles) return;
+      for (const role of roles) {
+        if (role.name === "Admin") {
+          await this.rest
+            .put(Routes.applicationCommandPermissions(clientId, guildId, command.id), {
+              body: {
+                "permissions": [
+                  {
+                    "id": role.id,
+                    "type": 1,
+                    "permission": true
+                  }
+                ]
+              }
+            })
+            .catch(console.error);
+
+        }
+      }
+    })
+  }
+
+  public setCommands = async ({ guilds }: { guilds: string[] }) => {
+    return Promise.all(guilds.map(this.setCommand));
   };
 
   public setCommand = async (guildId: string) => {
@@ -117,6 +148,10 @@ export class Bot {
       new SlashCommandBuilder()
         .setName("send-nft")
         .setDescription("send nft image"),
+      new SlashCommandBuilder()
+        .setName("add-role")
+        .setDescription("add user role")
+        .setDefaultPermission(false)
     ].map((command) => command.toJSON());
 
     await this.rest
@@ -125,6 +160,7 @@ export class Bot {
       })
       .then(() => console.log("Successfully registered application commands."))
       .catch(console.error);
+
   };
 
   public deleteAllCommands = async ({ guildId }: { guildId: string }) => {

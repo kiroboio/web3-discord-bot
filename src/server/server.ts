@@ -35,10 +35,11 @@ const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
 const bot = new Bot({ client, rest, io });
 
-client.on("ready", () => {
+client.on("ready", async() => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
-  bot.setCommands({ guilds });
+  await bot.setCommands({ guilds });
   bot.setGuildsBotChannel({ guilds })
+  bot.setAdminCommandsPermissions({ guilds })
   
 });
 
