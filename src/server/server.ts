@@ -13,8 +13,12 @@ config();
 
 const mongoUrl = "mongodb://localhost:27017/local"
 
-const keyv = new Keyv(mongoUrl);
-keyv.on('error', err => console.error('Keyv connection error:', err));
+const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: "roles"});
+const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: "users"});
+
+keyvRoles.on('error', err => console.error('Keyv connection error:', err));
+keyvUsers.on('error', err => console.error('Keyv connection error:', err));
+
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../", "client/build")));
@@ -38,7 +42,7 @@ const client = new Client({
 });
 const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
-const bot = new Bot({ client, rest, io, db: keyv });
+const bot = new Bot({ client, rest, io, rolesDb: keyvRoles, usersDb: keyvUsers });
 
 client.on("ready", async() => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
