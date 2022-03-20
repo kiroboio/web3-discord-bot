@@ -29,7 +29,7 @@ type IO = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
 
 const io: IO = new Server(server);
 const client = new Client({
-  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES],
+  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES,  Intents.FLAGS.GUILD_MEMBERS],
 });
 const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
@@ -38,11 +38,26 @@ const bot = new Bot({ client, rest, io });
 client.on("ready", () => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
   bot.setCommands({ guilds });
+  bot.setGuildsBotChannel({ guilds })
+  
 });
 
 client.on("guildCreate", (guild) => {
   bot.setCommand(guild.id);
+  bot.setGuildBotChannel({ guildId: guild.id })
 });
+
+client.on("guildMemberAdd", (member) => {
+  bot.setNewMemberBotChannelPermissions({ member})
+})
+
+client.on("guildMemberUpdate", (member) => {
+  bot.setNewMemberBotChannelPermissions({ member })
+})
+
+
+
+
 
 bot.runClient();
 

@@ -1,4 +1,4 @@
-import { Client, MessageEmbed, Presence } from "discord.js";
+import { Client, MessageEmbed, OverwriteResolvable, Presence, Permissions, GuildMember, PartialGuildMember } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -54,6 +54,49 @@ export class Bot {
     this.client = client;
     this.rest = rest;
     this.io = io;
+  }
+
+  public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
+    guilds.forEach((guildId) => {
+      this.setGuildBotChannel({ guildId })
+    })
+  }
+
+  public setGuildBotChannel = ({ guildId }: { guildId: string }) => {
+    const guild = this.client.guilds.cache.get(guildId);
+    if (!guild) return
+
+    for (const channel of guild.channels.cache.values()) {
+      if (channel.name === 'web3-kirobo-config') {
+        return;
+      }
+    }
+    const permissions: OverwriteResolvable[] = []
+    for (const member of guild.members.cache.values()) {
+      if (!member.permissions.has(Permissions.FLAGS.KICK_MEMBERS)) {
+        permissions.push({ id: member.id, deny: [Permissions.FLAGS.VIEW_CHANNEL] })
+      }
+    }
+    guild.channels.create('web3-kirobo-config', { reason: 'Config for web3-kirobo-bot', permissionOverwrites: permissions })
+      .catch(console.error);
+  }
+
+  public setNewMemberBotChannelPermissions = ({ member }: { member: GuildMember | PartialGuildMember }) => {
+
+    if (!member.guild.id || !member.id) return
+    const guildId = member.guild.id;
+    const userId = member.id;
+    const guild = this.client.guilds.cache.get(guildId);
+
+    if (!guild) return
+    for (const channel of guild.channels.cache.values()) {
+      if (channel.name === 'web3-kirobo-config') {
+        const permissions = member.permissions.has(Permissions.FLAGS.KICK_MEMBERS) ? { VIEW_CHANNEL: true } : { VIEW_CHANNEL: false }
+        // @ts-expect-error: wrong typing, permissionOverwrites exist
+        channel.permissionOverwrites.edit(userId, permissions);
+        return;
+      }
+    }
   }
 
   public setCommands = ({ guilds }: { guilds: string[] }) => {
@@ -186,7 +229,7 @@ export class Bot {
           if (!user) {
             interaction.reply({ content: "not connected" });
           }
-          
+
           await interaction.deferReply();
           const nfts = await user?.getNfts({ chain: "rinkeby" });
 
@@ -202,8 +245,8 @@ export class Bot {
           interaction.editReply({ content: "succeed" });
         }
         if (interaction.commandName === "send-nft") {
-          if(!this.users[interaction.user.id]) return interaction.reply({ content: "not connected" });
-          
+          if (!this.users[interaction.user.id]) return interaction.reply({ content: "not connected" });
+
           const uri = interaction.options.getString("nft");
           if (!uri) return interaction.reply({ content: "wrong uri" });
           const embed = this.users[interaction.user.id]?.getNftMessage({ uri });
