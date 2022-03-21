@@ -12,12 +12,10 @@ import https from "https";
 import fs from "fs";
 import { UI } from "../UI";
 import Keyv from "keyv";
+import { Roles } from "../Roles";
+import { Web3Vault } from "../../Web3/Web3Vault";
 
 config();
-
-const lol1RoleId = "953629558685458462";
-const lol2RoleId = "953629686506860587";
-const lol3RoleId = "953629734418415616";
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../../", "client/build")));
@@ -40,6 +38,7 @@ export class User {
   private userId: string;
   private vaultAddress: string | undefined;
   private usersDb: Keyv;
+  private roles: Roles;
 
   constructor({
     client,
@@ -48,20 +47,24 @@ export class User {
     usersDb,
     address,
     vaultAddress,
+    roles,
   }: {
     client: Client<boolean>;
     userId: string;
     guildId: string;
     usersDb: Keyv;
+    roles: Roles;
     address?: string;
-    vaultAddress?: string
+    vaultAddress?: string;
   }) {
     this.client = client;
     this.userId = userId;
     this.guildId = guildId;
     this.usersDb = usersDb;
-    this.address = address
-    this.vaultAddress = vaultAddress
+    this.address = address;
+    this.vaultAddress = vaultAddress;
+    this.roles = roles;
+    this.subscribe();
   }
 
   public getUserId = () => {
@@ -145,7 +148,7 @@ export class User {
   };
 
   public getNfts = async ({ chain }: { chain: "rinkeby" | "eth" }) => {
-    const vaultAddress = this.vaultAddress
+    const vaultAddress = this.vaultAddress;
 
     const url = `${VAULT_URL}/api/nfts/${this.address}${
       vaultAddress ? `;${vaultAddress}` : ""
@@ -259,15 +262,14 @@ export class User {
       })
       .end();
   };
-
   private onAccountChange = async ({
     account,
-    userId
+    userId,
   }: {
     account: string;
-    userId: string
+    userId: string;
   }) => {
-    if(userId !== this.userId) return
+    if (userId !== this.userId) return;
     if (!account || account === this.address) return;
 
     this.address = account;
@@ -275,7 +277,7 @@ export class User {
     await Vault.setVaultContract({ address: account, chainId: 4 });
 
     const vaultContract = Vault.contract[account];
-    this.vaultAddress = vaultContract?.options.address
+    this.vaultAddress = vaultContract?.options.address;
     const vaultContractAddress = vaultContract
       ? vaultContract.options.address
       : "vault not found";
@@ -293,8 +295,23 @@ export class User {
       thumbnail: `${URL}/images/vault.png`,
     });
 
+    this.updateUserRoles({ address: account });
+  };
+
+  private subscribe = () => {
+    Web3Vault.subscribeOnNewBlock({
+      chainId: "4",
+      callback: () => {
+        if (!this.address) return;
+        this.updateUserRoles({ address: this.address,  vaultAddress: this.vaultAddress });
+      },
+    });
+  };
+
+  private updateUserRoles = async ({ address, vaultAddress }: { address: string, vaultAddress?: string }) => {
     const balance = await Vault.getKiroBalance({
-      address: account,
+      address,
+      vaultAddress,
       chainId: 4,
     });
 
@@ -304,19 +321,22 @@ export class User {
 
     const user = guild.members.cache.get(this.userId);
     if (!user) return;
+    const roles = await this.roles.getRoles({ guildId: guild.id });
 
-    const loser = guild.roles.cache.get(lol1RoleId);
-    const poor = guild.roles.cache.get(lol2RoleId);
-    const rich = guild.roles.cache.get(lol3RoleId);
+    roles.forEach((role) => {
+      const guildRole = guild.roles.cache.get(role.id);
 
-    if (balanceNumber >= 0 && balanceNumber < 100 && loser) {
-      user.roles.add(loser).catch(console.error);
-    }
-    if (balanceNumber >= 100 && balanceNumber < 200 && poor) {
-      user.roles.add(poor).catch(console.error);
-    }
-    if (balanceNumber >= 200 && rich) {
-      user.roles.add(rich).catch(console.error);
-    }
+      if (parseFloat(role.amount) <= balanceNumber && guildRole) {
+        user.roles.add(guildRole.id).catch(console.error);
+      }
+
+      if (
+        parseFloat(role.amount) > balanceNumber &&
+        guildRole &&
+        user.roles.cache.has(guildRole.id)
+      ) {
+        user.roles.remove(guildRole.id).catch(console.error);
+      }
+    });
   };
 }

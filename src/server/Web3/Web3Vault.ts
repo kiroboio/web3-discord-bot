@@ -19,9 +19,9 @@ const vaultWalletAddress = {
 };
 
 const kiroboAddress = {
-  "1":"0xB1191F691A355b43542Bea9B8847bc73e7Abb137",
-  "4":"0xb678e95f83af08e7598ec21533f7585e83272799",
-}
+  "1": "0xB1191F691A355b43542Bea9B8847bc73e7Abb137",
+  "4": "0xb678e95f83af08e7598ec21533f7585e83272799",
+};
 export class Web3Vault {
   public static isValidAddress = (address: string) => {
     const isAddress = Web3.utils.isAddress(address);
@@ -45,18 +45,17 @@ export class Web3Vault {
     }
   };
 
-  public static getKiroboTokenContract = ({ chainId }: {chainId: 1 | 4}) => {
-      const chainIdText = String(chainId)
-      const erc20AbiItem = erc20Abi as AbiItem[];
-      const tokenAddress =  kiroboAddress[chainIdText]
+  public static getKiroboTokenContract = ({ chainId }: { chainId: 1 | 4 }) => {
+    const chainIdText = String(chainId);
+    const erc20AbiItem = erc20Abi as AbiItem[];
+    const tokenAddress = kiroboAddress[chainIdText];
 
-      const contract = new this.web3[chainIdText].eth.Contract(
-        erc20AbiItem,
-        tokenAddress
-      ) as unknown as Contract;
-     
-   
-      return contract;
+    const contract = new this.web3[chainIdText].eth.Contract(
+      erc20AbiItem,
+      tokenAddress
+    ) as unknown as Contract;
+
+    return contract;
   };
 
   public static getVaultContract = async ({
@@ -73,7 +72,7 @@ export class Web3Vault {
         .call();
       if (walletAccount && this.isValidAddress(walletAccount)) {
         const walletJsonAbi = WalletJSON.abi as AbiItem[];
-        const contract =  new this.web3[String(chainId)].eth.Contract(
+        const contract = new this.web3[String(chainId)].eth.Contract(
           walletJsonAbi,
           walletAccount
         ) as unknown as Contract;
@@ -88,13 +87,29 @@ export class Web3Vault {
     }
   };
 
+  public static subscribeOnNewBlock = ({
+    chainId,
+    callback,
+  }: {
+    chainId: "1" | "4";
+    callback: (blockNumber: number) => void;
+  }) => {
+    this.web3[chainId].eth
+      .subscribe("newBlockHeaders")
+      .on("data", (e) => {
+        if (!e.number) return;
+        callback(e.number);
+      })
+      .on("connected", async () => {})
+      .on("error", (e) => console.log("subscribe error", e));
+  };
+
   private static provider = {
     "1": new Web3.providers.WebsocketProvider(RPC_URLS[1]),
-    "4": new Web3.providers.WebsocketProvider(RPC_URLS[4])
-  }
+    "4": new Web3.providers.WebsocketProvider(RPC_URLS[4]),
+  };
   private static web3 = {
     "1": new Web3(this.provider["1"]),
     "4": new Web3(this.provider["4"]),
-  }
-
+  };
 }

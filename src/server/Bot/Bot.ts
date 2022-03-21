@@ -386,7 +386,8 @@ export class Bot {
       guildId,
       usersDb: this.usersDb,
       address,
-      vaultAddress
+      vaultAddress,
+      roles: this.roles
     });
     this.users[userId] = user;
 

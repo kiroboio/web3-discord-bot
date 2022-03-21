@@ -69,12 +69,13 @@ export class Roles {
     const roles = [];
     if (!guild) return [];
     for (const role of guild.roles.cache.values()) {
-      const amount = await this.rolesDb.get(role.name);
+      const amount = await this.rolesDb.get(role.name) as string;
       if (amount) {
         roles.push({
           name: role.name,
           value: role.name,
           amount,
+          id: role.id,
         });
       }
     }
