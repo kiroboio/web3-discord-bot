@@ -47,6 +47,8 @@ const bot = new Bot({ client, rest, io, rolesDb: keyvRoles, usersDb: keyvUsers }
 client.on("ready", async() => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
   await bot.setCommands({ guilds });
+  await bot.setConnectedUsers({ guilds })
+  
   bot.setGuildsBotChannel({ guilds })
   bot.permissions.setGuildsAdminCommandsPermissions({ guilds })
   

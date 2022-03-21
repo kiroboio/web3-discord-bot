@@ -43,12 +43,14 @@ export class UI {
   public static getConnectReply = ({
     token,
     presence,
+    userId,
   }: {
     presence: Presence | undefined;
     token: string;
+    userId: string
   }) => {
-    const desktopLink = `${URL}?token=${token}`;
-    const mobileLink = `${URL_METAMASK}?token=${token}`;
+    const desktopLink = `${URL}?token=${token}&userId=${userId}`;
+    const mobileLink = `${URL_METAMASK}?token=${token}$userId=${userId}`;
 
     const embedDesktopLink = new MessageEmbed()
       .setColor("#0099ff")

@@ -1,46 +1,58 @@
 import logo from "./logo.svg";
 import { io } from "socket.io-client";
 import "./App.css";
+import { useRef } from "react";
 
 const App = () => {
   // @ts-expect-error: ethereum exist in browser with metamask
   const ethereum = window.ethereum;
-  const user = {
-    account: ethereum?.selectedAddress,
-    sessionId: "",
-  };
+
+
+
+  const user = useRef<{
+    account?: string;
+    userId?: string;
+  }>({
+    account: undefined,
+    userId: undefined,
+  });
 
   const HOST = window.location.origin.replace(/^http/, "ws");
   const params = new URLSearchParams(window.location.search);
-  const socket = io(HOST, { query: { token: params.get('token')} });
+  const socket = io(HOST, { query: { token: params.get("token") } });
+
+  user.current.userId = params.get("userId") as string;
+
   window.history.replaceState({}, document.title, "/");
+
+  console.log({ user: user.current });
   ethereum
     ?.request({ method: "eth_requestAccounts" })
     .then((accounts: string[]) => {
       const account = accounts[0];
-      user.account = account;
+
+      user.current.account = account;
       if (!account) return;
 
-      socket.emit("account", { account, sessionId: user.sessionId });
+      socket.emit("account", { account, userId: user.current.userId });
     });
 
   ethereum?.on("accountsChanged", function (accounts: string[]) {
     const account = accounts[0];
-    user.account = account;
+    user.current.account = account;
     if (!account) return;
 
     socket.emit("account", {
       account,
-      sessionId: user.sessionId,
+      userId: user.current.userId,
     });
   });
 
   socket.on("connect", () => {
-    user.sessionId = socket.id;
-    if (!user.account) return;
+    if (! user.current.account) return;
     socket.emit("account", {
-      account: user.account,
-      sessionId: user.sessionId,
+      account:  user.current.account,
+      userId:  user.current.userId,
     });
   });
 
@@ -51,6 +63,6 @@ const App = () => {
       </header>
     </div>
   );
-}
+};
 
 export default App;

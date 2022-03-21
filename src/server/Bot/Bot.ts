@@ -1,8 +1,4 @@
-import {
-  CacheType,
-  Client,
-  CommandInteraction,
-} from "discord.js";
+import { CacheType, Client, CommandInteraction } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -45,7 +41,6 @@ export type CommandType = {
     choices?: { name: string; value: string }[];
   }[];
 };
-
 
 export class Bot {
   public static rest: REST;
@@ -127,6 +122,20 @@ export class Bot {
       .catch(console.error);
   };
 
+  public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
+    const users = this.client.users.cache.values();
+    guilds.forEach(async(guildId) => {
+      for (const user of users) {
+        const dbUser = (await this.usersDb.get(user.id)) as
+          | { wallet: string; vault?: string }
+          | undefined;
+        if (!dbUser) continue;
+
+        this.createUser({ userId: user.id, guildId, address: dbUser.wallet, vaultAddress: dbUser.vault });
+      }
+    });
+  };
+
   public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
     guilds.forEach((guildId) => {
       this.setGuildBotChannel({ guildId });
@@ -155,7 +164,7 @@ export class Bot {
 
   public setCommand = async (guildId: string) => {
     const roles = await this.roles.getRoles({ guildId });
-    const commands = getCommands({ roles })
+    const commands = getCommands({ roles });
 
     await Bot.rest
       .put(Routes.applicationGuildCommands(clientId, guildId), {
@@ -194,7 +203,7 @@ export class Bot {
         this.connect(interaction);
         break;
       case Commands.Disconnect:
-        this.disconnect(interaction);
+        await this.disconnect(interaction);
         break;
       case Commands.GetNfts:
         await this.getNfts(interaction);
@@ -215,37 +224,37 @@ export class Bot {
   };
 
   private connect = (interaction: CommandInteraction<CacheType>) => {
-    if (this.users[interaction.user.id]) {
-      interaction.reply({
-        content: "already connected",
-        ephemeral: true,
-      });
-      return;
-    }
+    // if (this.users[interaction.user.id]) {
+    //   interaction.reply({
+    //     content: "already connected",
+    //     ephemeral: true,
+    //   });
+    //   return;
+    // }
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
       const user = guild?.members.cache.get(interaction.user.id);
       const presence = user?.guild.presences.cache.get(interaction.user.id);
 
-      const reply = UI.getConnectReply({ presence, token });
+      const reply = UI.getConnectReply({ presence, token, userId: interaction.user.id });
       interaction.reply(reply);
 
-      this.createUser({
+      this.connectUser({
         userId: interaction.user.id,
-        channelId: interaction.channelId,
         token: { token },
         guildId: interaction?.guild?.id || "",
       });
     });
   };
 
-  private disconnect = (interaction: CommandInteraction<CacheType>) => {
+  private disconnect = async(interaction: CommandInteraction<CacheType>) => {
     if (!this.users[interaction.user.id]) {
       interaction.reply("not connected");
       return;
     }
-
+    
+    await this.usersDb.delete(interaction.user.id);
     delete this.users[interaction.user.id];
     interaction.reply({ content: "disconnected", ephemeral: true });
   };
@@ -332,13 +341,11 @@ export class Bot {
     return interaction.reply({ embeds: [embed] });
   };
 
-  private createUser = ({
+  private connectUser = ({
     userId,
-    channelId,
     token,
     guildId,
   }: {
-    channelId: string;
     userId: string;
     token: { token: string };
     guildId: string;
@@ -347,23 +354,42 @@ export class Bot {
       if (token.token === "") {
         return;
       }
-      if (this.users[userId]) return;
       if (socket.handshake.query.token !== token.token) return;
       token.token = "";
-      const user = new User({
-        client: this.client,
-        channelId,
+      const user = this.createUser({
         userId,
-        sessionId: socket.id,
         guildId,
       });
 
-      this.users[userId] = user;
-      this.users[userId]?.startAccountListener({ socket });
+      user?.startAccountListener({ socket });
     };
     setTimeout(() => {
       token.token = "";
     }, 60000);
     this.io.on("connection", connectListener);
+  };
+
+  private createUser = ({
+    userId,
+    guildId,
+    address,
+    vaultAddress
+  }: {
+    userId: string;
+    guildId: string;
+    address?: string;
+    vaultAddress?:string;
+  }) => {
+    const user = new User({
+      client: this.client,
+      userId,
+      guildId,
+      usersDb: this.usersDb,
+      address,
+      vaultAddress
+    });
+    this.users[userId] = user;
+
+    return user;
   };
 }

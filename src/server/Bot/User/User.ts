@@ -4,7 +4,6 @@ import { Socket } from "socket.io";
 import { Vault } from "../../Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { Contract } from "web3-eth-contract";
 import path from "path";
 import { COLORS, URL, IPFS_GATEWAY, VAULT_URL } from "../../constants";
 import axios from "axios";
@@ -12,6 +11,7 @@ import stream from "stream";
 import https from "https";
 import fs from "fs";
 import { UI } from "../UI";
+import Keyv from "keyv";
 
 config();
 
@@ -34,42 +34,42 @@ type NFT = {
   value: string;
 };
 export class User {
-  public guildId: string;
-
-  public channelId: string;
+  private guildId: string;
   private client: Client<boolean>;
-  private sessionId: string;
   private address: string | undefined;
   private userId: string;
-  private vaultContract: Contract | undefined;
-  public nfts: NFT[] = [];
+  private vaultAddress: string | undefined;
+  private usersDb: Keyv;
 
   constructor({
     client,
     userId,
-    channelId,
-    sessionId,
     guildId,
+    usersDb,
+    address,
+    vaultAddress,
   }: {
     client: Client<boolean>;
     userId: string;
-    channelId: string;
-    sessionId: string;
     guildId: string;
+    usersDb: Keyv;
+    address?: string;
+    vaultAddress?: string
   }) {
     this.client = client;
     this.userId = userId;
-    this.channelId = channelId;
-    this.sessionId = sessionId;
     this.guildId = guildId;
+    this.usersDb = usersDb;
+    this.address = address
+    this.vaultAddress = vaultAddress
   }
 
   public getUserId = () => {
     return this.userId;
   };
 
-  public getVaultContract = () => {
-    return this.vaultContract;
+  public getVaultAddress = () => {
+    return this.vaultAddress;
   };
 
   public getAddress = () => {
@@ -77,11 +77,8 @@ export class User {
   };
 
   public startAccountListener = ({ socket }: { socket: IoSocket }) => {
-    if (this.sessionId !== socket.id) return;
-
-    socket.on("account", ({ account, sessionId }) => {
-      if (this.sessionId !== sessionId) return;
-      this?.onAccountChange({ account, sessionId });
+    socket.on("account", ({ account, userId }) => {
+      this?.onAccountChange({ account, userId });
     });
   };
 
@@ -100,7 +97,14 @@ export class User {
     image?: string;
     thumbnail?: string;
   }) => {
-    const embed = UI.getMessageEmbedWith({ color, title, url, description, image, thumbnail })
+    const embed = UI.getMessageEmbedWith({
+      color,
+      title,
+      url,
+      description,
+      image,
+      thumbnail,
+    });
 
     this.client.users.cache.get(this.userId)?.send({ embeds: [embed] });
   };
@@ -141,7 +145,7 @@ export class User {
   };
 
   public getNfts = async ({ chain }: { chain: "rinkeby" | "eth" }) => {
-    const vaultAddress = this.vaultContract?.options?.address;
+    const vaultAddress = this.vaultAddress
 
     const url = `${VAULT_URL}/api/nfts/${this.address}${
       vaultAddress ? `;${vaultAddress}` : ""
@@ -256,25 +260,32 @@ export class User {
       .end();
   };
 
-
   private onAccountChange = async ({
     account,
-    sessionId,
+    userId
   }: {
     account: string;
-    sessionId: string;
+    userId: string
   }) => {
-    if (this.sessionId !== sessionId) return;
+    if(userId !== this.userId) return
     if (!account || account === this.address) return;
 
     this.address = account;
+    this.usersDb.set(this.userId, { wallet: account });
     await Vault.setVaultContract({ address: account, chainId: 4 });
+
     const vaultContract = Vault.contract[account];
-    this.vaultContract = vaultContract;
+    this.vaultAddress = vaultContract?.options.address
     const vaultContractAddress = vaultContract
       ? vaultContract.options.address
       : "vault not found";
 
+    if (vaultContract) {
+      this.usersDb.set(this.userId, {
+        wallet: account,
+        vault: vaultContract.options.address,
+      });
+    }
     this.sendMessageToUser({
       title: "Your Vault",
       url: VAULT_URL,
@@ -286,25 +297,25 @@ export class User {
       address: account,
       chainId: 4,
     });
-    
+
     const balanceNumber = parseFloat(balance);
     const guild = this.client.guilds.cache.get(this.guildId);
-    if(!guild) return; 
-    
-    const user = guild.members.cache.get(this.userId)
-    if(!user) return;
+    if (!guild) return;
+
+    const user = guild.members.cache.get(this.userId);
+    if (!user) return;
 
     const loser = guild.roles.cache.get(lol1RoleId);
     const poor = guild.roles.cache.get(lol2RoleId);
     const rich = guild.roles.cache.get(lol3RoleId);
-    
-    if(balanceNumber >= 0 && balanceNumber < 100 && loser) {
+
+    if (balanceNumber >= 0 && balanceNumber < 100 && loser) {
       user.roles.add(loser).catch(console.error);
     }
-    if(balanceNumber >= 100 && balanceNumber < 200 && poor) {
+    if (balanceNumber >= 100 && balanceNumber < 200 && poor) {
       user.roles.add(poor).catch(console.error);
     }
-    if(balanceNumber >= 200 && rich) {
+    if (balanceNumber >= 200 && rich) {
       user.roles.add(rich).catch(console.error);
     }
   };
