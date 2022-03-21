@@ -57,14 +57,6 @@ client.on("guildCreate", (guild) => {
   bot.setGuildBotChannel({ guildId: guild.id })
 });
 
-client.on("guildMemberAdd", (member) => {
-  bot.setNewMemberBotChannelPermissions({ member})
-})
-
-client.on("guildMemberUpdate", (member) => {
-  bot.setNewMemberBotChannelPermissions({ member })
-})
-
 client.on("roleCreate", (member) => {
   bot.setAdminCommandsPermissions({ guildId: member.guild.id })
 })

@@ -1,11 +1,7 @@
 import {
   Client,
   MessageEmbed,
-  OverwriteResolvable,
   Presence,
-  Permissions,
-  GuildMember,
-  PartialGuildMember,
 } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
@@ -88,47 +84,13 @@ export class Bot {
         return;
       }
     }
-    const permissions: OverwriteResolvable[] = [];
-    for (const member of guild.members.cache.values()) {
-      if (!member.permissions.has(Permissions.FLAGS.KICK_MEMBERS)) {
-        permissions.push({
-          id: member.id,
-          deny: [Permissions.FLAGS.VIEW_CHANNEL],
-        });
-      }
-    }
     guild.channels
       .create("web3-kirobo-config", {
         reason: "Config for web3-kirobo-bot",
-        permissionOverwrites: permissions,
       })
       .catch(console.error);
   };
 
-  public setNewMemberBotChannelPermissions = ({
-    member,
-  }: {
-    member: GuildMember | PartialGuildMember;
-  }) => {
-    if (!member.guild.id || !member.id) return;
-    const guildId = member.guild.id;
-    const userId = member.id;
-    const guild = this.client.guilds.cache.get(guildId);
-
-    if (!guild) return;
-    for (const channel of guild.channels.cache.values()) {
-      if (channel.name === "web3-kirobo-config") {
-        const permissions = member.permissions.has(
-          Permissions.FLAGS.KICK_MEMBERS
-        )
-          ? { VIEW_CHANNEL: true }
-          : { VIEW_CHANNEL: false };
-        // @ts-expect-error: wrong typing, permissionOverwrites exist
-        channel.permissionOverwrites.edit(userId, permissions);
-        return;
-      }
-    }
-  };
 
   public setGuildsAdminCommandsPermissions = ({
     guilds,
