@@ -1,8 +1,4 @@
-import {
-  Client,
-  MessageEmbed,
-  Presence,
-} from "discord.js";
+import { Client, MessageEmbed, Presence } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -91,7 +87,6 @@ export class Bot {
       .catch(console.error);
   };
 
-
   public setGuildsAdminCommandsPermissions = ({
     guilds,
   }: {
@@ -116,27 +111,25 @@ export class Bot {
     const roles = this.client.guilds.cache.get(guildId)?.roles.cache.values();
     if (!roles) return;
     for (const role of roles) {
-      if (role.name !== "kirobo-bot-admin") {
-        await this.rest
-          .put(
-            Routes.applicationCommandPermissions(clientId, guildId, command.id),
-            {
-              body: {
-                permissions: [
-                  {
-                    id: role.id,
-                    type: 1,
-                    permission: true,
-                  },
-                ],
-              },
-            }
-          )
-          .catch(console.error);
-      }
+      if (role.name !== "kirobo-bot-admin") continue;
+      await this.rest
+        .put(
+          Routes.applicationCommandPermissions(clientId, guildId, command.id),
+          {
+            body: {
+              permissions: [
+                {
+                  id: role.id,
+                  type: 1,
+                  permission: true,
+                },
+              ],
+            },
+          }
+        )
+        .catch(console.error);
     }
   };
-
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
     return Promise.all(guilds.map(this.setCommand));
@@ -244,7 +237,6 @@ export class Bot {
     const currentChoices = values.map(
       (choice) => [choice.name, choice.value] as [string, string]
     );
-    console.log({ prevChoices, currentChoices });
     const cc = new SlashCommandBuilder()
       .setName(command.name)
       .setDescription(command.description)
