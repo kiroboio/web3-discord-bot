@@ -1,4 +1,10 @@
-import { Client, MessageEmbed, Presence } from "discord.js";
+import {
+  CacheType,
+  Client,
+  CommandInteraction,
+  MessageEmbed,
+  Presence,
+} from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -41,11 +47,21 @@ export type CommandType = {
   }[];
 };
 
+enum Commands {
+  Connect = "connect",
+  Disconnect = "disconnect",
+  GetNfts = "get-nfts",
+  SendNft = "send-nft",
+  GetRoles = "get-roles",
+  DeleteRole = "delete-role",
+  AddRole = "add-role",
+}
+
 export class Bot {
   public static rest: REST;
   public usersDb: Keyv;
   public permissions;
-  
+
   private client: Client<boolean>;
   private io: IO;
   private users: { [key: string]: User | undefined } = {};
@@ -64,12 +80,12 @@ export class Bot {
     usersDb: Keyv;
   }) {
     Bot.rest = rest;
-    
+
     this.client = client;
     this.io = io;
     this.usersDb = usersDb;
-    this.roles = new Roles({ client, rolesDb })
-    this.permissions = new Permissions({ client })
+    this.roles = new Roles({ client, rolesDb });
+    this.permissions = new Permissions({ client });
   }
 
   public static setSubCommands = async ({
@@ -121,7 +137,6 @@ export class Bot {
       .catch(console.error);
   };
 
-
   public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
     guilds.forEach((guildId) => {
       this.setGuildBotChannel({ guildId });
@@ -143,7 +158,6 @@ export class Bot {
       })
       .catch(console.error);
   };
-
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
     return Promise.all(guilds.map(this.setCommand));
@@ -220,137 +234,159 @@ export class Bot {
     });
   };
 
-
   public runClient = () => {
     this.client.once("ready", () => {
-      this.client.on("interactionCreate", async (interaction) => {
-        if (!interaction.isCommand()) return;
-        if (interaction.commandName === "connect") {
-          if (this.users[interaction.user.id]) {
-            interaction.reply({
-              content: "already connected",
-              ephemeral: true,
-            });
-            return;
-          }
-          crypto.randomBytes(48, async (_err, buffer) => {
-            const token = buffer.toString("hex");
-            const guild = this.client.guilds.cache.get(
-              interaction?.guild?.id || ""
-            );
-            const user = guild?.members.cache.get(interaction.user.id);
-            const presence = user?.guild.presences.cache.get(
-              interaction.user.id
-            );
-
-            const reply = this.getConnectReply({ presence, token });
-            interaction.reply(reply);
-
-            this.createUser({
-              userId: interaction.user.id,
-              channelId: interaction.channelId,
-              token: { token },
-              guildId: interaction?.guild?.id || "",
-            });
-          });
-        }
-        if (interaction.commandName === "disconnect") {
-          if (!this.users[interaction.user.id]) {
-            interaction.reply("not connected");
-            return;
-          }
-
-          delete this.users[interaction.user.id];
-          interaction.reply({ content: "disconnected", ephemeral: true });
-        }
-
-        if (interaction.commandName === "get-nfts") {
-          const user = this.users[interaction.user.id];
-          if (!user) {
-            interaction.reply({ content: "not connected" });
-          }
-
-          await interaction.deferReply();
-          const nfts = await user?.getNfts({ chain: "rinkeby" });
-
-          if (!nfts || !nfts.length) {
-            interaction.editReply({ content: "not found" });
-            return;
-          }
-
-          Bot.setSubCommands({
-            commandName: "send-nft",
-            values: nfts,
-            guildId: interaction?.guild?.id || "",
-            subCommandName: "nft",
-            withPrevChoices: true,
-          });
-
-          interaction.editReply({ content: "succeed" });
-        }
-        if (interaction.commandName === "send-nft") {
-          if (!this.users[interaction.user.id])
-            return interaction.reply({ content: "not connected" });
-
-          const uri = interaction.options.getString("nft");
-          if (!uri) return interaction.reply({ content: "wrong uri" });
-          const embed = this.users[interaction.user.id]?.getNftMessage({ uri });
-          if (!embed) return interaction.reply({ content: "not found" });
-          interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === "add-role") {
-          const roleName = interaction.options.getString("role-name");
-          const amount = interaction.options.getInteger("kiro-amount-required");
-          if (!roleName) return interaction.reply("role name required");
-          if (!amount) return interaction.reply("amount required");
-
-          const guildId = interaction.guild?.id;
-          if (!guildId) return interaction.reply("failed to fetch guild id");
-          try {
-            await this.roles.createRole({
-              roleName,
-              amount: amount.toString(),
-              guildId,
-            });
-            interaction.reply("added");
-          } catch (e) {
-            interaction.reply(e.message);
-          }
-        }
-
-        if (interaction.commandName === "delete-role") {
-          const roleName = interaction.options.getString("role-name");
-
-          if (!roleName) return interaction.reply("role name required");
-
-          const guildId = interaction.guild?.id;
-          if (!guildId) return interaction.reply("failed to fetch guild id");
-          try {
-            console.log({ roleName });
-            await this.roles.deleteRole({ roleName, guildId });
-            interaction.reply("deleted");
-          } catch (e) {
-            interaction.reply(e.message);
-          }
-        }
-
-        if (interaction.commandName === "get-roles") {
-          const guildId = interaction.guild?.id;
-          if (!guildId) return interaction.reply("failed to fetch guild id");
-          try {
-            const roles = await this.roles.getRoles({ guildId });
-            console.log({ roles });
-          } catch (e) {
-            interaction.reply(e.message);
-          }
-        }
-      });
+      this.client.on("interactionCreate", this.handleInteraction);
     });
     this.client.login(process.env.TOKEN);
   };
 
-  
+  private handleInteraction = async (
+    interaction: CommandInteraction<CacheType>
+  ) => {
+    if (!interaction.isCommand()) return;
+    switch (interaction.commandName) {
+      case Commands.Connect:
+        this.connect(interaction);
+        break;
+      case Commands.Disconnect:
+        this.disconnect(interaction);
+        break;
+      case Commands.GetNfts:
+        await this.getNfts(interaction);
+        break;
+      case Commands.SendNft:
+        await this.sendNft(interaction);
+        break;
+      case Commands.AddRole:
+        await this.addRole(interaction);
+        break;
+      case Commands.GetRoles:
+        await this.getRoles(interaction);
+        break;
+      case Commands.DeleteRole:
+        await this.deleteRole(interaction);
+        break;
+    }
+  };
+
+  private connect = (interaction: CommandInteraction<CacheType>) => {
+    if (this.users[interaction.user.id]) {
+      interaction.reply({
+        content: "already connected",
+        ephemeral: true,
+      });
+      return;
+    }
+    crypto.randomBytes(48, async (_err, buffer) => {
+      const token = buffer.toString("hex");
+      const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
+      const user = guild?.members.cache.get(interaction.user.id);
+      const presence = user?.guild.presences.cache.get(interaction.user.id);
+
+      const reply = this.getConnectReply({ presence, token });
+      interaction.reply(reply);
+
+      this.createUser({
+        userId: interaction.user.id,
+        channelId: interaction.channelId,
+        token: { token },
+        guildId: interaction?.guild?.id || "",
+      });
+    });
+  };
+
+  private disconnect = (interaction: CommandInteraction<CacheType>) => {
+    if (!this.users[interaction.user.id]) {
+      interaction.reply("not connected");
+      return;
+    }
+
+    delete this.users[interaction.user.id];
+    interaction.reply({ content: "disconnected", ephemeral: true });
+  };
+  private addRole = async (interaction: CommandInteraction<CacheType>) => {
+    const roleName = interaction.options.getString("role-name");
+    const amount = interaction.options.getInteger("kiro-amount-required");
+    if (!roleName) return interaction.reply("role name required");
+    if (!amount) return interaction.reply("amount required");
+
+    const guildId = interaction.guild?.id;
+    if (!guildId) return interaction.reply("failed to fetch guild id");
+    try {
+      await this.roles.createRole({
+        roleName,
+        amount: amount.toString(),
+        guildId,
+      });
+      return interaction.reply("added");
+    } catch (e) {
+      return interaction.reply(e.message);
+    }
+  };
+
+  private getRoles = async (interaction: CommandInteraction<CacheType>) => {
+    const guildId = interaction.guild?.id;
+    if (!guildId) return interaction.reply("failed to fetch guild id");
+    try {
+      const roles = await this.roles.getRoles({ guildId });
+      console.log({ roles });
+    } catch (e) {
+      return interaction.reply(e.message);
+    }
+  };
+
+  private deleteRole = async (interaction: CommandInteraction<CacheType>) => {
+    const roleName = interaction.options.getString("role-name");
+
+    if (!roleName) return interaction.reply("role name required");
+
+    const guildId = interaction.guild?.id;
+    if (!guildId) return interaction.reply("failed to fetch guild id");
+    try {
+      console.log({ roleName });
+      await this.roles.deleteRole({ roleName, guildId });
+      return interaction.reply("deleted");
+    } catch (e) {
+      return interaction.reply(e.message);
+    }
+  };
+
+  private getNfts = async (interaction: CommandInteraction<CacheType>) => {
+    const user = this.users[interaction.user.id];
+    if (!user) {
+      interaction.reply({ content: "not connected" });
+    }
+
+    await interaction.deferReply();
+    const nfts = await user?.getNfts({ chain: "rinkeby" });
+
+    if (!nfts || !nfts.length) {
+      interaction.editReply({ content: "not found" });
+      return;
+    }
+
+    Bot.setSubCommands({
+      commandName: "send-nft",
+      values: nfts,
+      guildId: interaction?.guild?.id || "",
+      subCommandName: "nft",
+      withPrevChoices: true,
+    });
+
+    return interaction.editReply({ content: "succeed" });
+  };
+
+  private sendNft = (interaction: CommandInteraction<CacheType>) => {
+    if (!this.users[interaction.user.id])
+      return interaction.reply({ content: "not connected" });
+
+    const uri = interaction.options.getString("nft");
+    if (!uri) return interaction.reply({ content: "wrong uri" });
+    const embed = this.users[interaction.user.id]?.getNftMessage({ uri });
+    if (!embed) return interaction.reply({ content: "not found" });
+    return interaction.reply({ embeds: [embed] });
+  };
 
   private createUser = ({
     userId,
