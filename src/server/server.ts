@@ -48,7 +48,7 @@ client.on("ready", async() => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
   await bot.setCommands({ guilds });
   bot.setGuildsBotChannel({ guilds })
-  bot.setGuildsAdminCommandsPermissions({ guilds })
+  bot.permissions.setGuildsAdminCommandsPermissions({ guilds })
   
 });
 
@@ -58,11 +58,11 @@ client.on("guildCreate", (guild) => {
 });
 
 client.on("roleCreate", (member) => {
-  bot.setAdminCommandsPermissions({ guildId: member.guild.id })
+  bot.permissions.setAdminCommandsPermissions({ guildId: member.guild.id })
 })
 
 client.on("roleDelete", (member) => {
-  bot.setAdminCommandsPermissions({ guildId: member.guild.id })
+  bot.permissions.setAdminCommandsPermissions({ guildId: member.guild.id })
 })
 
 

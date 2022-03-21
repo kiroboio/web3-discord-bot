@@ -10,6 +10,8 @@ import { User } from "../User";
 import { URL, URL_METAMASK } from "../constants";
 import Keyv from "keyv";
 import { Roles } from "./Roles";
+import { Permissions } from "./Permissions";
+
 config();
 
 const clientId = process.env.CLIENT_ID || "";
@@ -22,7 +24,7 @@ type IoSocket = Socket<
   any
 >;
 
-type CommandType = {
+export type CommandType = {
   id: string;
   application_id: string;
   version: string;
@@ -40,12 +42,14 @@ type CommandType = {
 };
 
 export class Bot {
+  public static rest: REST;
+  public usersDb: Keyv;
+  public permissions;
+  
   private client: Client<boolean>;
   private io: IO;
-  private static rest: REST;
   private users: { [key: string]: User | undefined } = {};
   private roles;
-  public usersDb: Keyv;
   constructor({
     client,
     rest,
@@ -65,6 +69,7 @@ export class Bot {
     this.io = io;
     this.usersDb = usersDb;
     this.roles = new Roles({ client, rolesDb })
+    this.permissions = new Permissions({ client })
   }
 
   public static setSubCommands = async ({
@@ -139,49 +144,6 @@ export class Bot {
       .catch(console.error);
   };
 
-  public setGuildsAdminCommandsPermissions = ({
-    guilds,
-  }: {
-    guilds: string[];
-  }) => {
-    guilds.forEach((guildId) => {
-      this.setAdminCommandsPermissions({ guildId });
-    });
-  };
-
-  public setAdminCommandsPermissions = async ({
-    guildId,
-  }: {
-    guildId: string;
-  }) => {
-    const commands: CommandType[] = (await Bot.rest.get(
-      Routes.applicationGuildCommands(clientId, guildId)
-    )) as CommandType[];
-    const command = commands.find((command) => command.name === "add-role");
-    if (!command) return;
-
-    const roles = this.client.guilds.cache.get(guildId)?.roles.cache.values();
-    if (!roles) return;
-    for (const role of roles) {
-      if (role.name !== "kirobo-bot-admin") continue;
-      await Bot.rest
-        .put(
-          Routes.applicationCommandPermissions(clientId, guildId, command.id),
-          {
-            body: {
-              permissions: [
-                {
-                  id: role.id,
-                  type: 1,
-                  permission: true,
-                },
-              ],
-            },
-          }
-        )
-        .catch(console.error);
-    }
-  };
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
     return Promise.all(guilds.map(this.setCommand));
