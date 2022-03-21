@@ -1,16 +1,17 @@
 import { Client, ColorResolvable, MessageEmbed } from "discord.js";
 import express from "express";
 import { Socket } from "socket.io";
-import { Vault } from "../Web3/Vault";
+import { Vault } from "../../Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { Contract } from "web3-eth-contract";
 import path from "path";
-import { COLORS, URL, IPFS_GATEWAY, VAULT_URL } from "../constants";
+import { COLORS, URL, IPFS_GATEWAY, VAULT_URL } from "../../constants";
 import axios from "axios";
 import stream from "stream";
 import https from "https";
 import fs from "fs";
+import { UI } from "../UI";
 
 config();
 
@@ -99,26 +100,7 @@ export class User {
     image?: string;
     thumbnail?: string;
   }) => {
-    const embed = new MessageEmbed().setColor(color);
-    if (title) {
-      embed.setTitle(title);
-    }
-
-    if (url) {
-      embed.setURL(url);
-    }
-
-    if (description) {
-      embed.setDescription(description);
-    }
-
-    if (image) {
-      embed.setImage(image);
-    }
-
-    if (thumbnail) {
-      embed.setThumbnail(thumbnail);
-    }
+    const embed = UI.getMessageEmbedWith({ color, title, url, description, image, thumbnail })
 
     this.client.users.cache.get(this.userId)?.send({ embeds: [embed] });
   };
@@ -139,9 +121,7 @@ export class User {
     const user = this.client.users.cache.get(this.userId);
 
     uris?.map((uri) => {
-      const embed = new MessageEmbed().setColor(color);
-      embed.setThumbnail(uri);
-      embeds.push(embed);
+      embeds.push(UI.getMessageEmbedWith({ thumbnail: uri, color }));
     });
 
     user?.send({ embeds, options: {} });
@@ -208,11 +188,6 @@ export class User {
 
   private transformNft = async (nft: any) => {
     let token_uri: string | undefined;
-    // const nftUriArray = nft.token_uri.split(",");
-    // if (nftUriArray[0] === "data:application/json;base64") {
-    //   token_uri = JSON.parse(atob(nftUriArray[nftUriArray.length - 1]))?.image;
-    // } else {
-    // }
     token_uri = await this.tryGetImage({ url: String(nft.token_uri) });
     if (token_uri) {
       return {
@@ -281,15 +256,6 @@ export class User {
       .end();
   };
 
-  // public sendNftToChannel = ({ name, uris }: { name: string, uris: string[]}) => {
-
-  //   this.sendMessageToChannel({
-  //     title: name,
-  //     url: uri,
-  //     image: uri,
-  //   });
-
-  // }
 
   private onAccountChange = async ({
     account,

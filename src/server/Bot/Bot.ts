@@ -2,8 +2,6 @@ import {
   CacheType,
   Client,
   CommandInteraction,
-  MessageEmbed,
-  Presence,
 } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
@@ -12,11 +10,12 @@ import { Routes } from "discord-api-types/v9";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import crypto from "crypto";
-import { User } from "../User";
-import { URL, URL_METAMASK } from "../constants";
+import { User } from "./User";
 import Keyv from "keyv";
 import { Roles } from "./Roles";
 import { Permissions } from "./Permissions";
+import { getCommands, Commands } from "./commands";
+import { UI } from "./UI";
 
 config();
 
@@ -47,15 +46,6 @@ export type CommandType = {
   }[];
 };
 
-enum Commands {
-  Connect = "connect",
-  Disconnect = "disconnect",
-  GetNfts = "get-nfts",
-  SendNft = "send-nft",
-  GetRoles = "get-roles",
-  DeleteRole = "delete-role",
-  AddRole = "add-role",
-}
 
 export class Bot {
   public static rest: REST;
@@ -165,53 +155,7 @@ export class Bot {
 
   public setCommand = async (guildId: string) => {
     const roles = await this.roles.getRoles({ guildId });
-    const roleChoices = roles.map(
-      (role) => [role.name, role.name] as [string, string]
-    );
-    const commands = [
-      new SlashCommandBuilder()
-        .setName("connect")
-        .setDescription("Connect with metamask account"),
-      new SlashCommandBuilder()
-        .setName("disconnect")
-        .setDescription("Disconnect metamask"),
-      new SlashCommandBuilder()
-        .setName("get-nfts")
-        .setDescription("get nfts data"),
-      new SlashCommandBuilder()
-        .setName("send-nft")
-        .setDescription("send nft image"),
-      new SlashCommandBuilder()
-        .setName("get-roles")
-        .setDescription("get roles"),
-      new SlashCommandBuilder()
-        .setName("delete-role")
-        .setDescription("delete role by name")
-        .addStringOption((option) =>
-          option
-            .setName("role-name")
-            .setDescription("role name")
-            .addChoices(roleChoices)
-        ),
-      new SlashCommandBuilder()
-        .setName("add-role")
-        .setDescription("add role")
-        .addStringOption((option) =>
-          option
-            .setName("role-name")
-            .setDescription("add role name")
-            .setRequired(true)
-        )
-        .addIntegerOption((option) =>
-          option
-            .setName("kiro-amount-required")
-            .setDescription(
-              "amount of kiro on user balance required to get this role"
-            )
-            .setRequired(true)
-        )
-        .setDefaultPermission(false),
-    ].map((command) => command.toJSON());
+    const commands = getCommands({ roles })
 
     await Bot.rest
       .put(Routes.applicationGuildCommands(clientId, guildId), {
@@ -284,7 +228,7 @@ export class Bot {
       const user = guild?.members.cache.get(interaction.user.id);
       const presence = user?.guild.presences.cache.get(interaction.user.id);
 
-      const reply = this.getConnectReply({ presence, token });
+      const reply = UI.getConnectReply({ presence, token });
       interaction.reply(reply);
 
       this.createUser({
@@ -421,48 +365,5 @@ export class Bot {
       token.token = "";
     }, 60000);
     this.io.on("connection", connectListener);
-  };
-
-  private getConnectReply = ({
-    token,
-    presence,
-  }: {
-    presence: Presence | undefined;
-    token: string;
-  }) => {
-    const desktopLink = `${URL}?token=${token}`;
-    const mobileLink = `${URL_METAMASK}?token=${token}`;
-
-    const embedDesktopLink = new MessageEmbed()
-      .setColor("#0099ff")
-      .setTitle("Connect")
-      .setURL(desktopLink)
-      .setDescription(`Connect to metamask account`);
-
-    const embedMobileLink = new MessageEmbed()
-      .setColor("#0099ff")
-      .setTitle("Connect")
-      .setURL(mobileLink)
-      .setDescription(`Connect to metamask account in metamask browser`);
-
-    if (presence?.clientStatus?.mobile !== "online") {
-      return {
-        embeds: [embedDesktopLink],
-        ephemeral: true,
-      };
-    } else if (
-      presence?.clientStatus?.desktop !== "online" &&
-      presence?.clientStatus?.web !== "online"
-    ) {
-      return {
-        embeds: [embedMobileLink],
-        ephemeral: true,
-      };
-    } else {
-      return {
-        embeds: [embedDesktopLink, embedMobileLink],
-        ephemeral: true,
-      };
-    }
   };
 }
