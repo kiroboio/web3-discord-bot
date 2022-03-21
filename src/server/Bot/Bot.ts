@@ -1,4 +1,12 @@
-import { Client, MessageEmbed, OverwriteResolvable, Presence, Permissions, GuildMember, PartialGuildMember } from "discord.js";
+import {
+  Client,
+  MessageEmbed,
+  OverwriteResolvable,
+  Presence,
+  Permissions,
+  GuildMember,
+  PartialGuildMember,
+} from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -57,7 +65,6 @@ export class Bot {
     io: IO;
     rolesDb: Keyv;
     usersDb: Keyv;
-
   }) {
     this.client = client;
     this.rest = rest;
@@ -68,77 +75,106 @@ export class Bot {
 
   public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
     guilds.forEach((guildId) => {
-      this.setGuildBotChannel({ guildId })
-    })
-  }
+      this.setGuildBotChannel({ guildId });
+    });
+  };
 
   public setGuildBotChannel = ({ guildId }: { guildId: string }) => {
     const guild = this.client.guilds.cache.get(guildId);
-    if (!guild) return
+    if (!guild) return;
 
     for (const channel of guild.channels.cache.values()) {
-      if (channel.name === 'web3-kirobo-config') {
+      if (channel.name === "web3-kirobo-config") {
         return;
       }
     }
-    const permissions: OverwriteResolvable[] = []
+    const permissions: OverwriteResolvable[] = [];
     for (const member of guild.members.cache.values()) {
       if (!member.permissions.has(Permissions.FLAGS.KICK_MEMBERS)) {
-        permissions.push({ id: member.id, deny: [Permissions.FLAGS.VIEW_CHANNEL] })
+        permissions.push({
+          id: member.id,
+          deny: [Permissions.FLAGS.VIEW_CHANNEL],
+        });
       }
     }
-    guild.channels.create('web3-kirobo-config', { reason: 'Config for web3-kirobo-bot', permissionOverwrites: permissions })
+    guild.channels
+      .create("web3-kirobo-config", {
+        reason: "Config for web3-kirobo-bot",
+        permissionOverwrites: permissions,
+      })
       .catch(console.error);
-  }
+  };
 
-  public setNewMemberBotChannelPermissions = ({ member }: { member: GuildMember | PartialGuildMember }) => {
-
-    if (!member.guild.id || !member.id) return
+  public setNewMemberBotChannelPermissions = ({
+    member,
+  }: {
+    member: GuildMember | PartialGuildMember;
+  }) => {
+    if (!member.guild.id || !member.id) return;
     const guildId = member.guild.id;
     const userId = member.id;
     const guild = this.client.guilds.cache.get(guildId);
 
-    if (!guild) return
+    if (!guild) return;
     for (const channel of guild.channels.cache.values()) {
-      if (channel.name === 'web3-kirobo-config') {
-        const permissions = member.permissions.has(Permissions.FLAGS.KICK_MEMBERS) ? { VIEW_CHANNEL: true } : { VIEW_CHANNEL: false }
+      if (channel.name === "web3-kirobo-config") {
+        const permissions = member.permissions.has(
+          Permissions.FLAGS.KICK_MEMBERS
+        )
+          ? { VIEW_CHANNEL: true }
+          : { VIEW_CHANNEL: false };
         // @ts-expect-error: wrong typing, permissionOverwrites exist
         channel.permissionOverwrites.edit(userId, permissions);
         return;
       }
     }
-  }
+  };
 
-  public setAdminCommandsPermissions = async ({ guilds }: { guilds: string[] }) => {
-    guilds.forEach(async (guildId) => {
-      const commands: CommandType[] = (await this.rest.get(
-        Routes.applicationGuildCommands(clientId, guildId)
-      )) as CommandType[];
-      const command = commands.find((command) => command.name === "add-role");
-      if (!command) return
+  public setGuildsAdminCommandsPermissions = ({
+    guilds,
+  }: {
+    guilds: string[];
+  }) => {
+    guilds.forEach((guildId) => {
+      this.setAdminCommandsPermissions({ guildId });
+    });
+  };
 
-      const roles = this.client.guilds.cache.get(guildId)?.roles.cache.values()
-      if (!roles) return;
-      for (const role of roles) {
-        if (role.name === "Admin") {
-          await this.rest
-            .put(Routes.applicationCommandPermissions(clientId, guildId, command.id), {
+  public setAdminCommandsPermissions = async ({
+    guildId,
+  }: {
+    guildId: string;
+  }) => {
+    const commands: CommandType[] = (await this.rest.get(
+      Routes.applicationGuildCommands(clientId, guildId)
+    )) as CommandType[];
+    const command = commands.find((command) => command.name === "add-role");
+    if (!command) return;
+
+    const roles = this.client.guilds.cache.get(guildId)?.roles.cache.values();
+    if (!roles) return;
+    for (const role of roles) {
+      if (role.name !== "kirobo-bot-admin") {
+        await this.rest
+          .put(
+            Routes.applicationCommandPermissions(clientId, guildId, command.id),
+            {
               body: {
-                "permissions": [
+                permissions: [
                   {
-                    "id": role.id,
-                    "type": 1,
-                    "permission": true
-                  }
-                ]
-              }
-            })
-            .catch(console.error);
-
-        }
+                    id: role.id,
+                    type: 1,
+                    permission: true,
+                  },
+                ],
+              },
+            }
+          )
+          .catch(console.error);
       }
-    })
-  }
+    }
+  };
+
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
     return Promise.all(guilds.map(this.setCommand));
@@ -146,7 +182,9 @@ export class Bot {
 
   public setCommand = async (guildId: string) => {
     const roles = await this.getRoles({ guildId });
-    const roleChoices = roles.map((role) => [role.name, role.name] as [string, string])
+    const roleChoices = roles.map(
+      (role) => [role.name, role.name] as [string, string]
+    );
     const commands = [
       new SlashCommandBuilder()
         .setName("connect")
@@ -170,13 +208,26 @@ export class Bot {
           option
             .setName("role-name")
             .setDescription("role name")
-            .addChoices(roleChoices)),
+            .addChoices(roleChoices)
+        ),
       new SlashCommandBuilder()
         .setName("add-role")
         .setDescription("add role")
-        .addStringOption((option) => option.setName("role-name").setDescription("add role name").setRequired(true))
-        .addIntegerOption((option) => option.setName("kiro-amount-required").setDescription("amount of kiro on user balance required to get this role").setRequired(true))
-        .setDefaultPermission(false)
+        .addStringOption((option) =>
+          option
+            .setName("role-name")
+            .setDescription("add role name")
+            .setRequired(true)
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName("kiro-amount-required")
+            .setDescription(
+              "amount of kiro on user balance required to get this role"
+            )
+            .setRequired(true)
+        )
+        .setDefaultPermission(false),
     ].map((command) => command.toJSON());
 
     await this.rest
@@ -185,7 +236,6 @@ export class Bot {
       })
       .then(() => console.log("Successfully registered application commands."))
       .catch(console.error);
-
   };
 
   public deleteAllCommands = async ({ guildId }: { guildId: string }) => {
@@ -206,16 +256,16 @@ export class Bot {
     subCommandName,
     values,
     guildId,
-    withPrevChoices
+    withPrevChoices,
   }: {
-    commandName: "send-nft" | "delete-role",
-    subCommandName: "nft" | "role-name",
+    commandName: "send-nft" | "delete-role";
+    subCommandName: "nft" | "role-name";
     values: {
       name: string;
       value: string;
     }[];
     guildId: string;
-    withPrevChoices: boolean,
+    withPrevChoices: boolean;
   }) => {
     const commands: CommandType[] = (await this.rest.get(
       Routes.applicationGuildCommands(clientId, guildId)
@@ -224,13 +274,15 @@ export class Bot {
 
     if (!command) return;
 
-    const prevChoices = withPrevChoices ? command.options[0]?.choices?.map(
-      (choice) => [choice.name, choice.value] as [string, string]
-    ) : [];
+    const prevChoices = withPrevChoices
+      ? command.options[0]?.choices?.map(
+          (choice) => [choice.name, choice.value] as [string, string]
+        )
+      : [];
     const currentChoices = values.map(
       (choice) => [choice.name, choice.value] as [string, string]
     );
-    console.log({ prevChoices, currentChoices })
+    console.log({ prevChoices, currentChoices });
     const cc = new SlashCommandBuilder()
       .setName(command.name)
       .setDescription(command.description)
@@ -306,7 +358,7 @@ export class Bot {
             return;
           }
           this.setSubCommands({
-            commandName:"send-nft",
+            commandName: "send-nft",
             values: nfts,
             guildId: interaction?.guild?.id || "",
             subCommandName: "nft",
@@ -316,7 +368,8 @@ export class Bot {
           interaction.editReply({ content: "succeed" });
         }
         if (interaction.commandName === "send-nft") {
-          if (!this.users[interaction.user.id]) return interaction.reply({ content: "not connected" });
+          if (!this.users[interaction.user.id])
+            return interaction.reply({ content: "not connected" });
 
           const uri = interaction.options.getString("nft");
           if (!uri) return interaction.reply({ content: "wrong uri" });
@@ -334,7 +387,11 @@ export class Bot {
           const guildId = interaction.guild?.id;
           if (!guildId) return interaction.reply("failed to fetch guild id");
           try {
-            await this.createRole({ roleName, amount: amount.toString(), guildId })
+            await this.createRole({
+              roleName,
+              amount: amount.toString(),
+              guildId,
+            });
             interaction.reply("added");
           } catch (e) {
             interaction.reply(e.message);
@@ -346,12 +403,11 @@ export class Bot {
 
           if (!roleName) return interaction.reply("role name required");
 
-
           const guildId = interaction.guild?.id;
           if (!guildId) return interaction.reply("failed to fetch guild id");
           try {
-            console.log({ roleName })
-            await this.deleteRole({ roleName, guildId })
+            console.log({ roleName });
+            await this.deleteRole({ roleName, guildId });
             interaction.reply("deleted");
           } catch (e) {
             interaction.reply(e.message);
@@ -362,77 +418,90 @@ export class Bot {
           const guildId = interaction.guild?.id;
           if (!guildId) return interaction.reply("failed to fetch guild id");
           try {
-            const roles = await this.getRoles({ guildId })
-            console.log({ roles })
+            const roles = await this.getRoles({ guildId });
+            console.log({ roles });
           } catch (e) {
             interaction.reply(e.message);
           }
         }
-
       });
     });
     this.client.login(process.env.TOKEN);
   };
 
   private updateRoleCommands = async ({ guildId }: { guildId: string }) => {
-    const roles = await this.getRoles({ guildId })
-    this.setSubCommands({ guildId, values: roles, commandName: "delete-role", subCommandName: "role-name", withPrevChoices: false })
+    const roles = await this.getRoles({ guildId });
+    this.setSubCommands({
+      guildId,
+      values: roles,
+      commandName: "delete-role",
+      subCommandName: "role-name",
+      withPrevChoices: false,
+    });
+  };
 
-  }
-
-  private createRole = async ({ roleName, amount, guildId }: { roleName: string, amount: string, guildId: string }) => {
-
-    await this.rolesDb.set(roleName, amount)
+  private createRole = async ({
+    roleName,
+    amount,
+    guildId,
+  }: {
+    roleName: string;
+    amount: string;
+    guildId: string;
+  }) => {
+    await this.rolesDb.set(roleName, amount);
     const guild = this.client.guilds.cache.get(guildId);
 
     if (!guild) return;
     for (const role of guild.roles.cache.values()) {
       if (role.name === roleName) return;
     }
-    
-    await guild.roles.create({ name: roleName })
-    this.updateRoleCommands({ guildId })
-  }
 
-  private deleteRole = async ({ roleName, guildId }: { roleName: string, guildId: string }) => {
+    await guild.roles.create({ name: roleName });
+    this.updateRoleCommands({ guildId });
+  };
 
-    await this.rolesDb.delete(roleName)
+  private deleteRole = async ({
+    roleName,
+    guildId,
+  }: {
+    roleName: string;
+    guildId: string;
+  }) => {
+    await this.rolesDb.delete(roleName);
     const guild = this.client.guilds.cache.get(guildId);
 
     if (!guild) return;
     for (const role of guild.roles.cache.values()) {
       if (role.name === roleName) {
-        await guild.roles.delete(role.id)
+        await guild.roles.delete(role.id);
       }
     }
 
-    this.updateRoleCommands({ guildId })
-  }
+    this.updateRoleCommands({ guildId });
+  };
 
   private getRoles = async ({ guildId }: { guildId: string }) => {
-
     const guild = this.client.guilds.cache.get(guildId);
 
     const roles = [];
     if (!guild) return [];
     for (const role of guild.roles.cache.values()) {
-      const amount = await this.rolesDb.get(role.name)
+      const amount = await this.rolesDb.get(role.name);
       if (amount) {
         roles.push({
           name: role.name,
           value: role.name,
-          amount
-        })
+          amount,
+        });
       }
     }
-    return roles
-
-  }
-
+    return roles;
+  };
 
   public getData = async ({ roleName }: { roleName: string }) => {
     return await this.rolesDb.get(roleName);
-  }
+  };
 
   private createUser = ({
     userId,

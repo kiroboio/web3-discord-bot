@@ -320,14 +320,12 @@ export class User {
       address: account,
       chainId: 4,
     });
-    console.log({ balance });
     
     const balanceNumber = parseFloat(balance);
     const guild = this.client.guilds.cache.get(this.guildId);
     if(!guild) return; 
     
     const user = guild.members.cache.get(this.userId)
-    console.log({ user })
     if(!user) return;
 
     const loser = guild.roles.cache.get(lol1RoleId);
