@@ -1,11 +1,11 @@
-import { Client, ColorResolvable, MessageEmbed } from "discord.js";
+import { Client, ColorResolvable, MessageAttachment, MessageEmbed } from "discord.js";
 import express from "express";
 import { Socket } from "socket.io";
 import { Vault } from "../../Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";
-import { COLORS, URL, IPFS_GATEWAY, VAULT_URL } from "../../constants";
+import { COLORS, IPFS_GATEWAY, VAULT_URL } from "../../constants";
 import axios from "axios";
 import stream from "stream";
 import https from "https";
@@ -92,6 +92,7 @@ export class User {
     description,
     image,
     thumbnail,
+    files,
   }: {
     color?: ColorResolvable;
     title?: string;
@@ -99,6 +100,7 @@ export class User {
     description?: string;
     image?: string;
     thumbnail?: string;
+    files?: MessageAttachment[]
   }) => {
     const embed = UI.getMessageEmbedWith({
       color,
@@ -109,7 +111,7 @@ export class User {
       thumbnail,
     });
 
-    this.client.users.cache.get(this.userId)?.send({ embeds: [embed] });
+    this.client.users.cache.get(this.userId)?.send({ embeds: [embed], files });
   };
 
   private sendMessageToChannel = ({
@@ -288,11 +290,13 @@ export class User {
         vault: vaultContract.options.address,
       });
     }
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault"});
     this.sendMessageToUser({
       title: "Your Vault",
       url: VAULT_URL,
       description: vaultContractAddress,
-      thumbnail: `${URL}/images/vault.png`,
+      thumbnail: 'attachment://vault.png',
+      files: [attachment]
     });
 
     this.updateUserRoles({ address: account });

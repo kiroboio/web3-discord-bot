@@ -1,4 +1,4 @@
-import { CacheType, Client, CommandInteraction } from "discord.js";
+import { CacheType, Client, CommandInteraction, TextChannel } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -12,6 +12,8 @@ import { Roles } from "./Roles";
 import { Permissions } from "./Permissions";
 import { getCommands, Commands } from "./commands";
 import { UI } from "./UI";
+import { VAULT_URL } from "../constants";
+import open from "open"
 
 config();
 
@@ -124,14 +126,19 @@ export class Bot {
 
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
     const users = this.client.users.cache.values();
-    guilds.forEach(async(guildId) => {
+    guilds.forEach(async (guildId) => {
       for (const user of users) {
         const dbUser = (await this.usersDb.get(user.id)) as
           | { wallet: string; vault?: string }
           | undefined;
         if (!dbUser) continue;
 
-        this.createUser({ userId: user.id, guildId, address: dbUser.wallet, vaultAddress: dbUser.vault });
+        this.createUser({
+          userId: user.id,
+          guildId,
+          address: dbUser.wallet,
+          vaultAddress: dbUser.vault,
+        });
       }
     });
   };
@@ -142,20 +149,41 @@ export class Bot {
     });
   };
 
-  public setGuildBotChannel = ({ guildId }: { guildId: string }) => {
+  public setGuildBotChannel = async ({ guildId }: { guildId: string }) => {
     const guild = this.client.guilds.cache.get(guildId);
     if (!guild) return;
 
     for (const channel of guild.channels.cache.values()) {
       if (channel.name === "web3-kirobo-config") {
+        
         return;
       }
     }
-    guild.channels
+    const channel = await guild.channels
       .create("web3-kirobo-config", {
         reason: "Config for web3-kirobo-bot",
       })
       .catch(console.error);
+
+    if (!channel) return;
+    const guildChannel = this.client.channels.cache.get(
+      channel.id
+    ) as TextChannel;
+
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" })
+    const logoAttachment = UI.getMessageImageAttachment({ imageName: "kirogo" })
+    const connectMessage = UI.getMessageEmbedWith({
+      description:
+        "This is a read-only connection. Do not share your private keys. We will never ask for your seed phrase. We will never DM you.",
+      thumbnail: 'attachment://vault.png',
+      author: { name: "Kirobo Vault", iconURL: 'attachment://kirogo.png', url: VAULT_URL}
+    });
+    const connectButton = UI.getButton({ label: "Connect", customId: "connect" });
+    guildChannel.send({
+      embeds: [connectMessage],
+      components: [connectButton],
+      files: [attachment, logoAttachment],
+    });
   };
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
@@ -197,6 +225,14 @@ export class Bot {
   private handleInteraction = async (
     interaction: CommandInteraction<CacheType>
   ) => {
+    if (interaction.isButton()) {
+      switch (interaction.customId) {
+        case Commands.Connect:
+          this.connectOnButtonClick(interaction);
+          break;
+      }
+    }
+
     if (!interaction.isCommand()) return;
     switch (interaction.commandName) {
       case Commands.Connect:
@@ -224,20 +260,17 @@ export class Bot {
   };
 
   private connect = (interaction: CommandInteraction<CacheType>) => {
-    // if (this.users[interaction.user.id]) {
-    //   interaction.reply({
-    //     content: "already connected",
-    //     ephemeral: true,
-    //   });
-    //   return;
-    // }
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
       const user = guild?.members.cache.get(interaction.user.id);
       const presence = user?.guild.presences.cache.get(interaction.user.id);
 
-      const reply = UI.getConnectReply({ presence, token, userId: interaction.user.id });
+      const reply = UI.getConnectReply({
+        presence,
+        token,
+        userId: interaction.user.id,
+      });
       interaction.reply(reply);
 
       this.connectUser({
@@ -248,12 +281,36 @@ export class Bot {
     });
   };
 
-  private disconnect = async(interaction: CommandInteraction<CacheType>) => {
+  private connectOnButtonClick = (interaction: CommandInteraction<CacheType>) => {
+    crypto.randomBytes(48, async (_err, buffer) => {
+      const token = buffer.toString("hex");
+      const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
+      const user = guild?.members.cache.get(interaction.user.id);
+      const presence = user?.guild.presences.cache.get(interaction.user.id);
+
+      const url = UI.getConnectUrl({
+        presence,
+        token,
+        userId: interaction.user.id,
+      });
+      
+      open(url);
+
+      this.connectUser({
+        userId: interaction.user.id,
+        token: { token },
+        guildId: interaction?.guild?.id || "",
+      });
+    });
+  };
+
+
+  private disconnect = async (interaction: CommandInteraction<CacheType>) => {
     if (!this.users[interaction.user.id]) {
       interaction.reply("not connected");
       return;
     }
-    
+
     await this.usersDb.delete(interaction.user.id);
     delete this.users[interaction.user.id];
     interaction.reply({ content: "disconnected", ephemeral: true });
@@ -373,12 +430,12 @@ export class Bot {
     userId,
     guildId,
     address,
-    vaultAddress
+    vaultAddress,
   }: {
     userId: string;
     guildId: string;
     address?: string;
-    vaultAddress?:string;
+    vaultAddress?: string;
   }) => {
     const user = new User({
       client: this.client,
@@ -387,7 +444,7 @@ export class Bot {
       usersDb: this.usersDb,
       address,
       vaultAddress,
-      roles: this.roles
+      roles: this.roles,
     });
     this.users[userId] = user;
 
