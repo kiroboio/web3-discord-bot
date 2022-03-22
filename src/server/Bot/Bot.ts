@@ -187,11 +187,13 @@ export class Bot {
       label: "Connect",
       customId: "connect",
     });
-    guildChannel.send({
-      embeds: [connectMessage],
-      components: [connectButton],
-      files: [attachment, logoAttachment],
-    }).then((message) => message.pin());
+    guildChannel
+      .send({
+        embeds: [connectMessage],
+        components: [connectButton],
+        files: [attachment, logoAttachment],
+      })
+      .then((message) => message.pin());
   };
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
@@ -249,6 +251,9 @@ export class Bot {
       case Commands.Disconnect:
         await this.disconnect(interaction);
         break;
+      case Commands.MyVault:
+        await this.getMyVault(interaction);
+        break;
       case Commands.GetNfts:
         await this.getNfts(interaction);
         break;
@@ -269,9 +274,12 @@ export class Bot {
 
   private connect = async (interaction: CommandInteraction<CacheType>) => {
     const user = this.users[interaction.user.id];
-    if(user) {
-      interaction.reply({ content: "Already connected", ephemeral: true })
-      await user.sendVaultMessage({ channelId: interaction.channelId })
+    if (user) {
+      interaction.reply({ content: "Already connected", ephemeral: true });
+      const message = await user.getVaultMessage({ channelId: interaction.channelId });
+      if(message) {
+        user.sendMessage({ embeds: message.embeds, files: message.files, channelId: interaction.channelId })
+      }
       return;
     }
     crypto.randomBytes(48, async (_err, buffer) => {
@@ -296,13 +304,32 @@ export class Bot {
     });
   };
 
-  private connectOnButtonClick = async(
+  private getMyVault = async(interaction: CommandInteraction<CacheType>) => {
+    const user = this.users[interaction.user.id];
+    if(!user) {
+      const connectButton = UI.getButton({
+        label: "Connect",
+        customId: "connect",
+      });
+      interaction.reply({ content: "Not connected", ephemeral: true, components: [connectButton] });
+      return;
+    }
+
+    const message = await user.getVaultMessage({ channelId: interaction.channelId });
+  
+    return interaction.reply({ embeds: message?.embeds, files: message?.files });
+  }
+
+  private connectOnButtonClick = async (
     interaction: CommandInteraction<CacheType>
   ) => {
     const user = this.users[interaction.user.id];
-    if(user) {
-      interaction.reply({ content: "Already connected", ephemeral: true })
-      await user.sendVaultMessage({ channelId: interaction.channelId })
+    if (user) {
+      interaction.reply({ content: "Already connected", ephemeral: true });
+      const message = await user.getVaultMessage({ channelId: interaction.channelId });
+      if(message) {
+        user.sendMessage({ embeds: message.embeds, files: message.files, channelId: interaction.channelId })
+      }
       return;
     }
     crypto.randomBytes(48, async (_err, buffer) => {
@@ -310,13 +337,12 @@ export class Bot {
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
       const user = guild?.members.cache.get(interaction.user.id);
       const presence = user?.guild.presences.cache.get(interaction.user.id);
-
+      interaction.reply({ content: "Connect to metamask", ephemeral: true });
       const url = UI.getConnectUrl({
         presence,
         token,
         userId: interaction.user.id,
       });
-      interaction.reply({ content: "Connect to metamask account", ephemeral: true })
       open(url);
 
       this.connectUser({
@@ -363,7 +389,7 @@ export class Bot {
     if (!guildId) return interaction.reply("failed to fetch guild id");
     try {
       const roles = await this.roles.getRoles({ guildId });
-      console.log({ roles });
+      console.log({ roles })
     } catch (e) {
       return interaction.reply(e.message);
     }
@@ -420,7 +446,7 @@ export class Bot {
     return interaction.reply({ embeds: [embed] });
   };
 
-  private connectUser = async({
+  private connectUser = async ({
     userId,
     token,
     guildId,
@@ -431,7 +457,6 @@ export class Bot {
     guildId: string;
     interaction: CommandInteraction<CacheType>;
   }) => {
-
     const connectListener = (socket: IoSocket) => {
       if (token.token === "") {
         return;
@@ -449,7 +474,7 @@ export class Bot {
       token.token = "";
     }, 60000);
 
-    this.io.off("connection", connectListener)
+    this.io.off("connection", connectListener);
     this.io.on("connection", connectListener);
   };
 

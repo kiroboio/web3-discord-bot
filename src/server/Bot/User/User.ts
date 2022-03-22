@@ -4,6 +4,7 @@ import {
   EmbedFieldData,
   EmbedFooterData,
   MessageAttachment,
+  MessageEmbed,
   TextChannel,
 } from "discord.js";
 import express from "express";
@@ -92,8 +93,7 @@ export class User extends NFTs {
     socket.on("account", listener);
   };
 
-  private sendMessageToUser = ({
-    channelId,
+  private getMessageToUserEmbeds = ({
     color = COLORS.primary,
     title,
     url,
@@ -104,7 +104,6 @@ export class User extends NFTs {
     footer,
     fields,
   }: {
-    channelId: string;
     color?: ColorResolvable;
     title?: string;
     url?: string;
@@ -126,8 +125,20 @@ export class User extends NFTs {
       footer,
     });
 
+    return { embeds: [embed], files };
+  };
+
+  public sendMessage = ({
+    channelId,
+    embeds,
+    files,
+  }: {
+    channelId: string;
+    embeds: MessageEmbed[] | undefined;
+    files?: MessageAttachment[] | undefined;
+  }) => {
     const channel = this.client.channels.cache.get(channelId) as TextChannel;
-    channel.send({ embeds: [embed], files });
+    channel.send({ embeds, files });
   };
 
   private onAccountChange = async ({
@@ -161,12 +172,14 @@ export class User extends NFTs {
       chainId: 4,
     });
 
-    await this.sendVaultMessage({ channelId });
-
+    const message = await this.getVaultMessage({ channelId });
+    if(message) {
+      this.sendMessage({ embeds: message.embeds, files: message.files, channelId })
+    }
     await this.updateUserRoles({ totalBalance: balance.total });
   };
 
-  public sendVaultMessage = async ({ channelId }: { channelId: string }) => {
+  public getVaultMessage = async ({ }: { channelId: string }) => {
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
     const logoAttachment = UI.getMessageImageAttachment({
       imageName: "kirogo",
@@ -179,12 +192,13 @@ export class User extends NFTs {
       chainId: 4,
     });
 
-    const userName = this.client.users.cache.get(this.userId)?.username
-    this.sendMessageToUser({
-      channelId,
-      title: userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Vault` : "Vault",
+    const userName = this.client.users.cache.get(this.userId)?.username;
+    return this.getMessageToUserEmbeds({
+      title: userName
+        ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Vault`
+        : "Vault",
       url: VAULT_URL,
-      description: this.vaultAddress,
+      description: this.vaultAddress ? this.vaultAddress : "Vault not found =(",
       thumbnail: "attachment://vault.png",
       footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
       files: [attachment, logoAttachment],
@@ -201,6 +215,8 @@ export class User extends NFTs {
         },
       ],
     });
+
+    //this.sendMessage({ embeds: message.embeds, files: message.files, channelId })
   };
 
   private subscribe = () => {

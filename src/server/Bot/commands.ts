@@ -8,6 +8,7 @@ export enum Commands {
   GetRoles = "get-roles",
   DeleteRole = "delete-role",
   AddRole = "add-role",
+  MyVault = "my-vault",
 }
 
 export const getCommands = ({
@@ -22,19 +23,15 @@ export const getCommands = ({
   return [
     new SlashCommandBuilder()
       .setName(Commands.Connect)
-      .setDescription("Connect with metamask account"),
+      .setDescription("Connect metamask account to this bot"),
 
     new SlashCommandBuilder()
       .setName(Commands.Disconnect)
-      .setDescription("Disconnect metamask"),
+      .setDescription("Disconnect metamask account"),
 
     new SlashCommandBuilder()
-      .setName(Commands.GetNfts)
-      .setDescription("get nfts data"),
-
-    new SlashCommandBuilder()
-      .setName(Commands.SendNft)
-      .setDescription("send nft image"),
+      .setName(Commands.MyVault)
+      .setDescription("Show My Vault Info"),
 
     new SlashCommandBuilder()
       .setName(Commands.GetRoles)
@@ -67,6 +64,15 @@ export const getCommands = ({
           )
           .setRequired(true)
       )
+      .setDefaultPermission(false),
+    new SlashCommandBuilder()
+      .setName(Commands.GetNfts)
+      .setDescription("get nfts data")
+      .setDefaultPermission(false),
+
+    new SlashCommandBuilder()
+      .setName(Commands.SendNft)
+      .setDescription("send nft image")
       .setDefaultPermission(false),
   ].map((command) => command.toJSON());
 };
