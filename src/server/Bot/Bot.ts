@@ -13,7 +13,7 @@ import { Permissions } from "./Permissions";
 import { getCommands, Commands } from "./commands";
 import { UI } from "./UI";
 import { VAULT_URL } from "../constants";
-import open from "open"
+import open from "open";
 
 config();
 
@@ -155,7 +155,6 @@ export class Bot {
 
     for (const channel of guild.channels.cache.values()) {
       if (channel.name === "web3-kirobo-config") {
-        
         return;
       }
     }
@@ -170,20 +169,29 @@ export class Bot {
       channel.id
     ) as TextChannel;
 
-    const attachment = UI.getMessageImageAttachment({ imageName: "vault" })
-    const logoAttachment = UI.getMessageImageAttachment({ imageName: "kirogo" })
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
     const connectMessage = UI.getMessageEmbedWith({
       description:
-        "This is a read-only connection. Do not share your private keys. We will never ask for your seed phrase. We will never DM you.",
-      thumbnail: 'attachment://vault.png',
-      author: { name: "Kirobo Vault", iconURL: 'attachment://kirogo.png', url: VAULT_URL}
+        "This is a read-only connection. Do not share your private keys. We will never ask for your seed phrase.",
+      thumbnail: "attachment://vault.png",
+      author: {
+        name: "Kirobo Vault",
+        iconURL: "attachment://kirogo.png",
+        url: VAULT_URL,
+      },
     });
-    const connectButton = UI.getButton({ label: "Connect", customId: "connect" });
+    const connectButton = UI.getButton({
+      label: "Connect",
+      customId: "connect",
+    });
     guildChannel.send({
       embeds: [connectMessage],
       components: [connectButton],
       files: [attachment, logoAttachment],
-    });
+    }).then((message) => message.pin());
   };
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
@@ -228,7 +236,7 @@ export class Bot {
     if (interaction.isButton()) {
       switch (interaction.customId) {
         case Commands.Connect:
-          this.connectOnButtonClick(interaction);
+          await this.connectOnButtonClick(interaction);
           break;
       }
     }
@@ -236,7 +244,7 @@ export class Bot {
     if (!interaction.isCommand()) return;
     switch (interaction.commandName) {
       case Commands.Connect:
-        this.connect(interaction);
+        await this.connect(interaction);
         break;
       case Commands.Disconnect:
         await this.disconnect(interaction);
@@ -259,7 +267,13 @@ export class Bot {
     }
   };
 
-  private connect = (interaction: CommandInteraction<CacheType>) => {
+  private connect = async (interaction: CommandInteraction<CacheType>) => {
+    const user = this.users[interaction.user.id];
+    if(user) {
+      interaction.reply({ content: "Already connected", ephemeral: true })
+      await user.sendVaultMessage({ channelId: interaction.channelId })
+      return;
+    }
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
@@ -277,11 +291,20 @@ export class Bot {
         userId: interaction.user.id,
         token: { token },
         guildId: interaction?.guild?.id || "",
+        interaction,
       });
     });
   };
 
-  private connectOnButtonClick = (interaction: CommandInteraction<CacheType>) => {
+  private connectOnButtonClick = async(
+    interaction: CommandInteraction<CacheType>
+  ) => {
+    const user = this.users[interaction.user.id];
+    if(user) {
+      interaction.reply({ content: "Already connected", ephemeral: true })
+      await user.sendVaultMessage({ channelId: interaction.channelId })
+      return;
+    }
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
@@ -293,17 +316,17 @@ export class Bot {
         token,
         userId: interaction.user.id,
       });
-      
+      interaction.reply({ content: "Connect to metamask account", ephemeral: true })
       open(url);
 
       this.connectUser({
         userId: interaction.user.id,
         token: { token },
         guildId: interaction?.guild?.id || "",
+        interaction,
       });
     });
   };
-
 
   private disconnect = async (interaction: CommandInteraction<CacheType>) => {
     if (!this.users[interaction.user.id]) {
@@ -354,7 +377,6 @@ export class Bot {
     const guildId = interaction.guild?.id;
     if (!guildId) return interaction.reply("failed to fetch guild id");
     try {
-      console.log({ roleName });
       await this.roles.deleteRole({ roleName, guildId });
       return interaction.reply("deleted");
     } catch (e) {
@@ -398,15 +420,18 @@ export class Bot {
     return interaction.reply({ embeds: [embed] });
   };
 
-  private connectUser = ({
+  private connectUser = async({
     userId,
     token,
     guildId,
+    interaction,
   }: {
     userId: string;
     token: { token: string };
     guildId: string;
+    interaction: CommandInteraction<CacheType>;
   }) => {
+
     const connectListener = (socket: IoSocket) => {
       if (token.token === "") {
         return;
@@ -418,11 +443,13 @@ export class Bot {
         guildId,
       });
 
-      user?.startAccountListener({ socket });
+      user?.startAccountListener({ socket, channelId: interaction.channelId });
     };
     setTimeout(() => {
       token.token = "";
     }, 60000);
+
+    this.io.off("connection", connectListener)
     this.io.on("connection", connectListener);
   };
 

@@ -1,19 +1,24 @@
-import { Client, ColorResolvable, MessageAttachment, MessageEmbed } from "discord.js";
+import {
+  Client,
+  ColorResolvable,
+  EmbedFieldData,
+  EmbedFooterData,
+  MessageAttachment,
+  TextChannel,
+} from "discord.js";
 import express from "express";
 import { Socket } from "socket.io";
 import { Vault } from "../../Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";
-import { COLORS, IPFS_GATEWAY, VAULT_URL } from "../../constants";
-import axios from "axios";
-import stream from "stream";
-import https from "https";
-import fs from "fs";
+import { COLORS, VAULT_URL } from "../../constants";
+
 import { UI } from "../UI";
 import Keyv from "keyv";
 import { Roles } from "../Roles";
 import { Web3Vault } from "../../Web3/Web3Vault";
+import { NFTs } from "./NFTs";
 
 config();
 
@@ -27,16 +32,8 @@ type IoSocket = Socket<
   any
 >;
 
-type NFT = {
-  name: string;
-  value: string;
-};
-export class User {
+export class User extends NFTs {
   private guildId: string;
-  private client: Client<boolean>;
-  private address: string | undefined;
-  private userId: string;
-  private vaultAddress: string | undefined;
   private usersDb: Keyv;
   private roles: Roles;
 
@@ -57,12 +54,9 @@ export class User {
     address?: string;
     vaultAddress?: string;
   }) {
-    this.client = client;
-    this.userId = userId;
+    super({ client, userId, address, vaultAddress });
     this.guildId = guildId;
     this.usersDb = usersDb;
-    this.address = address;
-    this.vaultAddress = vaultAddress;
     this.roles = roles;
     this.subscribe();
   }
@@ -79,13 +73,27 @@ export class User {
     return this.address;
   };
 
-  public startAccountListener = ({ socket }: { socket: IoSocket }) => {
-    socket.on("account", ({ account, userId }) => {
-      this?.onAccountChange({ account, userId });
-    });
+  public startAccountListener = ({
+    socket,
+    channelId,
+  }: {
+    socket: IoSocket;
+    channelId: string;
+  }) => {
+    const listener = ({
+      account,
+      userId,
+    }: {
+      account: string;
+      userId: string;
+    }) => {
+      this?.onAccountChange({ account, userId, channelId });
+    };
+    socket.on("account", listener);
   };
 
   private sendMessageToUser = ({
+    channelId,
     color = COLORS.primary,
     title,
     url,
@@ -93,14 +101,19 @@ export class User {
     image,
     thumbnail,
     files,
+    footer,
+    fields,
   }: {
+    channelId: string;
     color?: ColorResolvable;
     title?: string;
     url?: string;
     description?: string;
     image?: string;
     thumbnail?: string;
-    files?: MessageAttachment[]
+    files?: MessageAttachment[];
+    footer?: EmbedFooterData;
+    fields?: EmbedFieldData[];
   }) => {
     const embed = UI.getMessageEmbedWith({
       color,
@@ -109,167 +122,22 @@ export class User {
       description,
       image,
       thumbnail,
+      fields,
+      footer,
     });
 
-    this.client.users.cache.get(this.userId)?.send({ embeds: [embed], files });
+    const channel = this.client.channels.cache.get(channelId) as TextChannel;
+    channel.send({ embeds: [embed], files });
   };
 
-  private sendMessageToChannel = ({
-    color = COLORS.primary,
-    uris,
-  }: {
-    color?: ColorResolvable;
-    title?: string;
-    url?: string;
-    description?: string;
-    image?: string;
-    thumbnail?: string;
-    uris?: string[];
-  }) => {
-    const embeds: MessageEmbed[] = [];
-    const user = this.client.users.cache.get(this.userId);
-
-    uris?.map((uri) => {
-      embeds.push(UI.getMessageEmbedWith({ thumbnail: uri, color }));
-    });
-
-    user?.send({ embeds, options: {} });
-  };
-
-  public getNftMessage = ({
-    uri,
-    color = COLORS.primary,
-  }: {
-    uri: string;
-    color?: ColorResolvable;
-  }) => {
-    const embed = new MessageEmbed().setColor(color);
-    embed.setImage(uri);
-
-    return embed;
-  };
-
-  public getNfts = async ({ chain }: { chain: "rinkeby" | "eth" }) => {
-    const vaultAddress = this.vaultAddress;
-
-    const url = `${VAULT_URL}/api/nfts/${this.address}${
-      vaultAddress ? `;${vaultAddress}` : ""
-    }?chain=${chain}`;
-    console.log({ address: this.address, vaultAddress });
-    const res = await axios
-      .get(url, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET,PUT,POST,DELETE,PATCH,OPTIONS",
-        },
-      })
-      .then(async (response) => {
-        return {
-          ...response.data,
-          result: await Promise.all(
-            response.data[0]?.nfts.map(
-              async (nft: any) => (await this.transformNft(nft)) as NFT
-            ) || []
-          ),
-          result_vault: await Promise.all(
-            response.data[1]?.nfts.map(
-              async (nft: any) => (await this.transformNft(nft)) as NFT
-            ) || []
-          ),
-        };
-      })
-      .catch((e) => {
-        console.error({ error: e });
-      });
-
-    const nfts: NFT[] = res.result
-      .filter((nft: NFT) => !!nft)
-      .concat(res.result_vault.filter((nft: NFT) => !!nft));
-    if (!nfts.length) return nfts;
-    this.sendMessageToChannel({
-      uris: nfts.map((nft) => nft.value),
-      title: "test",
-    });
-    return nfts;
-  };
-
-  private transformNft = async (nft: any) => {
-    let token_uri: string | undefined;
-    token_uri = await this.tryGetImage({ url: String(nft.token_uri) });
-    if (token_uri) {
-      return {
-        name: nft.name.trim().split(" ").join("-").toLowerCase(),
-        value: token_uri,
-      };
-    }
-
-    return undefined;
-  };
-
-  private ipfsToHttps = (uri: string) => {
-    const ipfsPos = uri.search("/ipfs/");
-    if (ipfsPos > 0) {
-      return `${IPFS_GATEWAY}${uri.slice(ipfsPos + 6)}`;
-    }
-    if (uri.startsWith("ipfs://")) {
-      return `${IPFS_GATEWAY}${uri.replace(`ipfs://`, "")}`;
-    }
-    if (uri.startsWith("ipfs:/")) {
-      return `${IPFS_GATEWAY}${uri.replace(`ipfs:/`, "")}`;
-    }
-    return uri;
-  };
-
-  private tryGetImage = async ({ url }: { url: string }) => {
-    return axios
-      .get(`${VAULT_URL}/api/nft/image/url?url=${this.ipfsToHttps(url)}`, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
-      })
-      .then((response) => {
-        const image = response.data.image;
-        if (image) {
-          return this.ipfsToHttps(image);
-        }
-        return undefined;
-      })
-      .catch(() => {
-        return undefined;
-      });
-  };
-
-  public downloadImage = async ({
-    url,
-    name,
-  }: {
-    url: string;
-    name: string;
-  }) => {
-    https
-      .request(url, (response) => {
-        const data = new stream.Transform();
-        response.on("data", (chunk) => {
-          data.push(chunk);
-        });
-
-        response.on("end", async () => {
-          fs.writeFileSync(
-            path.join(__dirname, "../../", `images/nfts/${name}.png`),
-            data.read()
-          );
-        });
-      })
-      .end();
-  };
   private onAccountChange = async ({
     account,
     userId,
+    channelId,
   }: {
     account: string;
     userId: string;
+    channelId: string;
   }) => {
     if (userId !== this.userId) return;
     if (!account || account === this.address) return;
@@ -280,9 +148,6 @@ export class User {
 
     const vaultContract = Vault.contract[account];
     this.vaultAddress = vaultContract?.options.address;
-    const vaultContractAddress = vaultContract
-      ? vaultContract.options.address
-      : "vault not found";
 
     if (vaultContract) {
       this.usersDb.set(this.userId, {
@@ -290,36 +155,75 @@ export class User {
         vault: vaultContract.options.address,
       });
     }
-    const attachment = UI.getMessageImageAttachment({ imageName: "vault"});
-    this.sendMessageToUser({
-      title: "Your Vault",
-      url: VAULT_URL,
-      description: vaultContractAddress,
-      thumbnail: 'attachment://vault.png',
-      files: [attachment]
+    const balance = await Vault.getKiroBalance({
+      address: this.address,
+      vaultAddress: this.vaultAddress,
+      chainId: 4,
     });
 
-    this.updateUserRoles({ address: account });
+    await this.sendVaultMessage({ channelId });
+
+    await this.updateUserRoles({ totalBalance: balance.total });
+  };
+
+  public sendVaultMessage = async ({ channelId }: { channelId: string }) => {
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
+
+    if (!this.address) return;
+    const balance = await Vault.getKiroBalance({
+      address: this.address,
+      vaultAddress: this.vaultAddress,
+      chainId: 4,
+    });
+
+    const userName = this.client.users.cache.get(this.userId)?.username
+    this.sendMessageToUser({
+      channelId,
+      title: userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Vault` : "Vault",
+      url: VAULT_URL,
+      description: this.vaultAddress,
+      thumbnail: "attachment://vault.png",
+      footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
+      files: [attachment, logoAttachment],
+      fields: [
+        {
+          name: "Wallet Kiro Balance",
+          value: balance.wallet,
+          inline: true,
+        },
+        {
+          name: "Vault Kiro Balance",
+          value: balance.vault || "0",
+          inline: true,
+        },
+      ],
+    });
   };
 
   private subscribe = () => {
     Web3Vault.subscribeOnNewBlock({
       chainId: "4",
-      callback: () => {
+      callback: async () => {
         if (!this.address) return;
-        this.updateUserRoles({ address: this.address,  vaultAddress: this.vaultAddress });
+        const balance = await Vault.getKiroBalance({
+          address: this.address,
+          vaultAddress: this.vaultAddress,
+          chainId: 4,
+        });
+        this.updateUserRoles({ totalBalance: balance.total });
       },
     });
   };
 
-  private updateUserRoles = async ({ address, vaultAddress }: { address: string, vaultAddress?: string }) => {
-    const balance = await Vault.getKiroBalance({
-      address,
-      vaultAddress,
-      chainId: 4,
-    });
-
-    const balanceNumber = parseFloat(balance);
+  private updateUserRoles = async ({
+    totalBalance,
+  }: {
+    totalBalance: string;
+  }) => {
+    const balanceNumber = parseFloat(totalBalance);
     const guild = this.client.guilds.cache.get(this.guildId);
     if (!guild) return;
 
@@ -329,11 +233,9 @@ export class User {
 
     roles.forEach((role) => {
       const guildRole = guild.roles.cache.get(role.id);
-
       if (parseFloat(role.amount) <= balanceNumber && guildRole) {
         user.roles.add(guildRole.id).catch(console.error);
       }
-
       if (
         parseFloat(role.amount) > balanceNumber &&
         guildRole &&

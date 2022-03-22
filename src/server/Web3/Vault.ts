@@ -38,6 +38,10 @@ export class Vault {
     const balanceBN = toBN(balance);
     const balanceVault = toBN(vaultBalance);
 
-    return weiToEther(balanceBN.add(balanceVault).toString(), 18);
+    return {
+      total: weiToEther(balanceBN.add(balanceVault).toString(), 18),
+      wallet: weiToEther(balanceBN.toString()),
+      vault: weiToEther(balanceVault.toString()),
+    };
   };
 }

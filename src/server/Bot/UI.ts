@@ -7,6 +7,8 @@ import {
   MessageButtonStyleResolvable,
   MessageAttachment,
   EmbedAuthorData,
+  EmbedFooterData,
+  EmbedFieldData,
 } from "discord.js";
 import path from "path";
 import { COLORS, URL, URL_METAMASK } from "../constants";
@@ -20,6 +22,8 @@ export class UI {
     image,
     thumbnail,
     author,
+    footer,
+    fields
   }: {
     color?: ColorResolvable;
     title?: string;
@@ -28,6 +32,8 @@ export class UI {
     image?: string;
     thumbnail?: string;
     author?: EmbedAuthorData;
+    footer?: EmbedFooterData;
+    fields?: EmbedFieldData[];
   }) => {
     const embed = new MessageEmbed().setColor(color);
     if (title) {
@@ -51,6 +57,14 @@ export class UI {
 
     if (thumbnail) {
       embed.setThumbnail(thumbnail);
+    }
+
+    if(footer) {
+      embed.setFooter(footer);
+    }
+
+    if(fields) {
+      embed.addFields(fields)
     }
 
     return embed;
