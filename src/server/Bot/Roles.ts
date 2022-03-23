@@ -64,6 +64,24 @@ export class Roles {
     this.updateRoleCommands({ guildId });
   };
 
+  public createBotAdminRole = async ({
+
+    guildId,
+  }: {
+ 
+    guildId: string;
+
+  }) => {
+    const guild = this.client.guilds.cache.get(guildId);
+    if(!guild) return;
+    for (const role of guild.roles.cache.values()) {
+      if (role.name === "kirobo-bot-admin") return role.id;
+    }
+    const botAdminRole = await guild.roles.create({ name: "kirobo-bot-admin", color: "BLUE" });
+    
+    return botAdminRole.id;
+  };
+
   public deleteRole = async ({
     roleName,
     guildId,

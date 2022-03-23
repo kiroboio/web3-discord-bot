@@ -86,7 +86,8 @@ export const getCommands = ({
           .setName("role-name")
           .setDescription("role name")
           .addChoices(roleChoices)
-      ),
+      )
+      .setDefaultPermission(false),
 
     new SlashCommandBuilder()
       .setName(Commands.AddRole)

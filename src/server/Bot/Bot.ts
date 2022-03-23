@@ -80,7 +80,7 @@ export class Bot {
     this.io = io;
     this.usersDb = usersDb;
     this.roles = new Roles({ client, rolesDb });
-    this.permissions = new Permissions({ client });
+    this.permissions = new Permissions({ client, roles: this.roles });
     this.subscribeUsers();
   }
 
