@@ -29,9 +29,10 @@ export class Permissions {
   }: {
     guildId: string;
   }) => {
-    const commands: CommandType[] = (await Bot.rest.get(
-      Routes.applicationGuildCommands(clientId, guildId)
-    )) as CommandType[];
+    const commands: CommandType[] = (await Bot.rest
+      .get(Routes.applicationGuildCommands(clientId, guildId))
+      .catch((e) => console.error({ error: e.message }))) as CommandType[];
+    if(!commands) return;
     const command = commands.find((command) => command.name === "add-role");
     if (!command) return;
 

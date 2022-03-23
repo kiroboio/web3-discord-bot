@@ -252,13 +252,19 @@ export class Bot {
         await this.disconnect(interaction);
         break;
       case Commands.MyVault:
+        if (!(await this.isUserExist(interaction))) return;
         await this.getMyVault(interaction);
+
         break;
       case Commands.GetNfts:
+        if (!(await this.isUserExist(interaction))) return;
         await this.getNfts(interaction);
+
         break;
       case Commands.SendNft:
+        if (!(await this.isUserExist(interaction))) return;
         await this.sendNft(interaction);
+
         break;
       case Commands.AddRole:
         await this.addRole(interaction);
@@ -272,13 +278,38 @@ export class Bot {
     }
   };
 
+  private isUserExist = async (interaction: CommandInteraction<CacheType>) => {
+    const user = await this.usersDb.get(interaction.user.id);
+    console.log({ user })
+    if (!user) {
+      const connectButton = UI.getButton({
+        label: "Connect",
+        customId: "connect",
+      });
+      interaction.reply({
+        content: "Not connected",
+        ephemeral: true,
+        components: [connectButton],
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   private connect = async (interaction: CommandInteraction<CacheType>) => {
     const user = this.users[interaction.user.id];
     if (user) {
       interaction.reply({ content: "Already connected", ephemeral: true });
-      const message = await user.getVaultMessage({ channelId: interaction.channelId });
-      if(message) {
-        user.sendMessage({ embeds: message.embeds, files: message.files, channelId: interaction.channelId })
+      const message = await user.getVaultMessage({
+        channelId: interaction.channelId,
+      });
+      if (message) {
+        user.sendMessage({
+          embeds: message.embeds,
+          files: message.files,
+          channelId: interaction.channelId,
+        });
       }
       return;
     }
@@ -304,21 +335,29 @@ export class Bot {
     });
   };
 
-  private getMyVault = async(interaction: CommandInteraction<CacheType>) => {
+  private getMyVault = async (interaction: CommandInteraction<CacheType>) => {
     const user = this.users[interaction.user.id];
-    if(!user) {
+    if (!user) {
       const connectButton = UI.getButton({
         label: "Connect",
         customId: "connect",
       });
-      interaction.reply({ content: "Not connected", ephemeral: true, components: [connectButton] });
-      return;
+      return interaction.reply({
+        content: "your address not found, try to connect",
+        ephemeral: true,
+        components: [connectButton]
+      });
     }
 
-    const message = await user.getVaultMessage({ channelId: interaction.channelId });
-  
-    return interaction.reply({ embeds: message?.embeds, files: message?.files });
-  }
+    const message = await user.getVaultMessage({
+      channelId: interaction.channelId,
+    });
+
+    return interaction.reply({
+      embeds: message?.embeds,
+      files: message?.files,
+    });
+  };
 
   private connectOnButtonClick = async (
     interaction: CommandInteraction<CacheType>
@@ -326,9 +365,15 @@ export class Bot {
     const user = this.users[interaction.user.id];
     if (user) {
       interaction.reply({ content: "Already connected", ephemeral: true });
-      const message = await user.getVaultMessage({ channelId: interaction.channelId });
-      if(message) {
-        user.sendMessage({ embeds: message.embeds, files: message.files, channelId: interaction.channelId })
+      const message = await user.getVaultMessage({
+        channelId: interaction.channelId,
+      });
+      if (message) {
+        user.sendMessage({
+          embeds: message.embeds,
+          files: message.files,
+          channelId: interaction.channelId,
+        });
       }
       return;
     }
@@ -389,7 +434,7 @@ export class Bot {
     if (!guildId) return interaction.reply("failed to fetch guild id");
     try {
       const roles = await this.roles.getRoles({ guildId });
-      console.log({ roles })
+      console.log({ roles });
     } catch (e) {
       return interaction.reply(e.message);
     }

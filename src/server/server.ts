@@ -11,18 +11,17 @@ import { DEFAULT_PORT } from "./constants";
 import Keyv from "keyv";
 config();
 
-const mongoUrl = "mongodb://localhost:27017/local"
+const mongoUrl = "mongodb://localhost:27017/local";
 
-const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: "roles"});
-const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: "users"});
+const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: "roles" });
+const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: "users" });
 
-keyvRoles.on('error', err => console.error('Keyv connection error:', err));
-keyvUsers.on('error', err => console.error('Keyv connection error:', err));
-
+keyvRoles.on("error", (err) => console.error("Keyv connection error:", err));
+keyvUsers.on("error", (err) => console.error("Keyv connection error:", err));
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../", "client/build")));
-app.use('/images', express.static(path.join(__dirname, "../", "images")));
+app.use("/images", express.static(path.join(__dirname, "../", "images")));
 
 const PORT = process.env.PORT || DEFAULT_PORT;
 const INDEX = "/index.html";
@@ -35,28 +34,39 @@ const server = app
 
 type IO = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
 
-
 const io: IO = new Server(server);
 const client = new Client({
-  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES,  Intents.FLAGS.GUILD_MEMBERS],
+  intents: [
+    Intents.FLAGS.GUILDS,
+    Intents.FLAGS.GUILD_PRESENCES,
+    Intents.FLAGS.GUILD_MEMBERS,
+  ],
 });
+
 const rest = new REST({ version: "9" }).setToken(process.env.TOKEN || "");
 
-const bot = new Bot({ client, rest, io, rolesDb: keyvRoles, usersDb: keyvUsers });
+const bot = new Bot({
+  client,
+  rest,
+  io,
+  rolesDb: keyvRoles,
+  usersDb: keyvUsers,
+});
 
-client.on("ready", async() => {
+client.on("ready", async () => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
+
   await bot.setCommands({ guilds });
-  await bot.setConnectedUsers({ guilds })
-  
-  bot.setGuildsBotChannel({ guilds })
-  bot.permissions.setGuildsAdminCommandsPermissions({ guilds })
-  
+
+  await bot.setConnectedUsers({ guilds });
+  bot.setGuildsBotChannel({ guilds });
+  bot.permissions.setGuildsAdminCommandsPermissions({ guilds });
 });
 
 client.on("guildCreate", (guild) => {
+  console.log({ guildCreate: "guildCreate", guild });
   bot.setCommand(guild.id);
-  bot.setGuildBotChannel({ guildId: guild.id })
+  bot.setGuildBotChannel({ guildId: guild.id });
 });
 
 client.on("roleCreate", (member) => {
@@ -66,12 +76,6 @@ client.on("roleCreate", (member) => {
 client.on("roleDelete", (member) => {
   bot.permissions.setAdminCommandsPermissions({ guildId: member.guild.id })
 })
-
-
-
-
-
-
 
 bot.runClient();
 
