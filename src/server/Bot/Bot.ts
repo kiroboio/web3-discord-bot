@@ -14,6 +14,8 @@ import { getCommands, Commands } from "./commands";
 import { UI } from "./UI";
 import { VAULT_URL } from "../constants";
 import open from "open";
+import { Web3Subscriber } from "../Web3/Web3Subscriber";
+import { Vault } from "../Web3/Vault";
 
 config();
 
@@ -73,6 +75,7 @@ export class Bot {
     this.usersDb = usersDb;
     this.roles = new Roles({ client, rolesDb });
     this.permissions = new Permissions({ client });
+    this.subscribeUsers();
   }
 
   public static setSubCommands = async ({
@@ -280,7 +283,7 @@ export class Bot {
 
   private isUserExist = async (interaction: CommandInteraction<CacheType>) => {
     const user = await this.usersDb.get(interaction.user.id);
-    console.log({ user })
+    console.log({ user });
     if (!user) {
       const connectButton = UI.getButton({
         label: "Connect",
@@ -345,7 +348,7 @@ export class Bot {
       return interaction.reply({
         content: "your address not found, try to connect",
         ephemeral: true,
-        components: [connectButton]
+        components: [connectButton],
       });
     }
 
@@ -406,8 +409,8 @@ export class Bot {
     }
 
     await this.usersDb.delete(interaction.user.id);
-    
-    this.users[interaction.user.id]?.removeAllListeners()
+
+    this.users[interaction.user.id]?.removeAllListeners();
     delete this.users[interaction.user.id];
     interaction.reply({ content: "disconnected", ephemeral: true });
   };
@@ -548,5 +551,27 @@ export class Bot {
     this.users[userId] = user;
 
     return user;
+  };
+
+  private subscribeUsers = () => {
+    Web3Subscriber.subscribeOnNewBlock({
+      chainId: "4",
+      callback: async (blockNumber) => {
+        console.log({ blockNumber });
+        for (const user of Object.values(this.users)) {
+          if (!user) continue;
+
+          const address = user.getAddress();
+          if (!address) continue;
+          
+          const balance = await Vault.getKiroBalance({
+            address,
+            vaultAddress: user.getVaultAddress(),
+            chainId: 4,
+          });
+          await user.updateUserRoles({ totalBalance: balance.total });
+        }
+      },
+    });
   };
 }
