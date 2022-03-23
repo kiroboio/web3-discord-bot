@@ -1,4 +1,10 @@
-import { CacheType, Client, ColorResolvable, CommandInteraction, TextChannel } from "discord.js";
+import {
+  CacheType,
+  Client,
+  ColorResolvable,
+  CommandInteraction,
+  TextChannel,
+} from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -205,7 +211,7 @@ export class Bot {
 
   public setCommand = async (guildId: string) => {
     const roles = await this.roles.getRoles({ guildId });
-    this.client.emojis.cache.values()
+    this.client.emojis.cache.values();
     const commands = getCommands({ roles, emojies: this.client.emojis.cache });
 
     await Bot.rest
@@ -275,6 +281,9 @@ export class Bot {
         break;
       case Commands.GetRoles:
         await this.roles.sendRoles(interaction);
+        break;
+      case Commands.MyRole:
+        await this.roles.sendRole(interaction);
         break;
       case Commands.DeleteRole:
         await this.deleteRole(interaction);
@@ -419,9 +428,9 @@ export class Bot {
     const roleName = interaction.options.getString("role-name");
     const amount = interaction.options.getInteger("kiro-amount-required");
     const color = interaction.options.getString("color") as ColorResolvable;
-    const emoji = interaction.options.getString("emoji")
+    const emoji = interaction.options.getString("emoji");
 
-    console.log({ emoji })
+    console.log({ emoji });
     if (!roleName) return interaction.reply("role name required");
     if (!amount) return interaction.reply("amount required");
 
@@ -433,7 +442,7 @@ export class Bot {
         amount: amount.toString(),
         guildId,
         color,
-        emoji
+        emoji,
       });
       return interaction.reply("added");
     } catch (e) {
@@ -552,8 +561,7 @@ export class Bot {
   private subscribeUsers = () => {
     Web3Subscriber.subscribeOnNewBlock({
       chainId: "4",
-      callback: async (blockNumber) => {
-        console.log({ blockNumber });
+      callback: async () => {
         for (const user of Object.values(this.users)) {
           if (!user) continue;
 

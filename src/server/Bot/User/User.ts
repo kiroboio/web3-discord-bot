@@ -231,7 +231,6 @@ export class User extends NFTs {
   }: {
     totalBalance: string;
   }) => {
-    console.log({ updateUserRoles: "updateUserRoles", address: this.address })
     const balanceNumber = parseFloat(totalBalance);
     const guild = this.client.guilds.cache.get(this.guildId);
     if (!guild) return;

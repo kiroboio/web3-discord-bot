@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { Emoji, GuildEmoji } from "discord.js";
+import { GuildEmoji } from "discord.js";
 
 export enum Commands {
   Connect = "connect",
@@ -7,6 +7,7 @@ export enum Commands {
   GetNfts = "get-nfts",
   SendNft = "send-nft",
   GetRoles = "get-roles",
+  MyRole = "my-role",
   DeleteRole = "delete-role",
   AddRole = "add-role",
   MyVault = "my-vault",
@@ -39,24 +40,23 @@ const colors = [
   "RANDOM",
 ] as const;
 
-Emoji
-
 export const getCommands = ({
   roles,
   emojies,
 }: {
   roles: { name: string; value: string; amount: string }[];
-  emojies: Map<string, GuildEmoji>
+  emojies: Map<string, GuildEmoji>;
 }) => {
-
-  const emojiesChoices:[string, string][] = []
-  for(const emoji of emojies.values()) {
+  const emojiesChoices: [string, string][] = [];
+  for (const emoji of emojies.values()) {
     emojiesChoices.push([emoji.url, emoji.url]);
   }
   const roleChoices = roles.map(
     (role) => [role.name, role.name] as [string, string]
   );
-  const colorChoices = colors.map((color) => [color, color] as [string, string])
+  const colorChoices = colors.map(
+    (color) => [color, color] as [string, string]
+  );
   return [
     new SlashCommandBuilder()
       .setName(Commands.Connect)
@@ -73,6 +73,10 @@ export const getCommands = ({
     new SlashCommandBuilder()
       .setName(Commands.GetRoles)
       .setDescription("get roles"),
+
+    new SlashCommandBuilder()
+      .setName(Commands.MyRole)
+      .setDescription("get my role according kiro amount"),
 
     new SlashCommandBuilder()
       .setName(Commands.DeleteRole)
@@ -107,10 +111,8 @@ export const getCommands = ({
           .setDescription("role color")
           .addChoices(colorChoices)
       )
-      .addStringOption((option) => 
-        option
-        .setName("emoji")
-        .setDescription("role emoji")
+      .addStringOption((option) =>
+        option.setName("emoji").setDescription("role emoji")
       )
       .setDefaultPermission(false),
     new SlashCommandBuilder()

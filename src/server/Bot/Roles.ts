@@ -11,6 +11,14 @@ import { Bot } from "./Bot";
 import { UI } from "./UI";
 
 type RoleDb = { amount: string; emoji: string | null; color?: string };
+type Role = {
+  name: string;
+  value: string;
+  amount: string;
+  id: string;
+  color: number;
+  emoji: string | null;
+};
 export class Roles {
   private client: Client<boolean>;
   private rolesDb: Keyv;
@@ -95,9 +103,44 @@ export class Roles {
       imageName: "kirogo",
     });
     const embed = UI.getMessageEmbedWith({
-      title: "Kirobo Roles",
+      title: `Kirobo Role`,
       url: VAULT_URL,
       fields,
+      thumbnail: "attachment://vault.png",
+      footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
+    });
+
+    interaction.reply({ embeds: [embed], files: [attachment, logoAttachment] });
+  };
+
+  public sendRole = async (interaction: CommandInteraction<CacheType>) => {
+    if (!interaction.guildId) {
+      interaction.reply("guild not found");
+      return;
+    }
+    const role = await this.getUserRole({ guildId: interaction.guildId, userId: interaction.user.id });
+
+    let name: string
+    if(role) {
+      name = role.emoji
+      ? `${role.emoji} ${role.name.toUpperCase()}: ${role.amount} Kiro`
+      : `${role.name.toLocaleUpperCase()}: ${role.amount} Kiro`;
+    } else {
+      name = "You don't have any role, try to get some Kiro"
+    }
+    const field: EmbedFieldData = { name, value: "\u200b" };
+
+
+    
+
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
+    const embed = UI.getMessageEmbedWith({
+      title: `${interaction.user.username} role`,
+      url: VAULT_URL,
+      fields: [field],
       thumbnail: "attachment://vault.png",
       footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
     });
@@ -124,5 +167,37 @@ export class Roles {
       }
     }
     return roles;
+  };
+
+  public getUserRole = async ({
+    guildId,
+    userId,
+  }: {
+    guildId: string;
+    userId: string;
+  }) => {
+    const guild = this.client.guilds.cache.get(guildId);
+
+    let role: Role | undefined;
+
+    if (!guild) return role;
+
+    const member = guild.members.cache.get(userId);
+    if (!member) return role;
+
+    for (const roleItems of member.roles.cache.values()) {
+      const roleDb: RoleDb = await this.rolesDb.get(roleItems.name);
+      if (roleDb && parseFloat(roleDb.amount) > parseFloat(role?.amount || "-1") ) {
+        role = {
+          name: roleItems.name,
+          value: roleItems.name,
+          amount: roleDb.amount,
+          id: roleItems.id,
+          color: roleItems.color,
+          emoji: roleDb.emoji,
+        };
+      }
+    }
+    return role;
   };
 }
