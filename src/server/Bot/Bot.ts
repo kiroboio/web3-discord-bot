@@ -1,4 +1,4 @@
-import { CacheType, Client, CommandInteraction, TextChannel } from "discord.js";
+import { CacheType, Client, ColorResolvable, CommandInteraction, TextChannel } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
 import { REST } from "@discordjs/rest";
@@ -205,7 +205,8 @@ export class Bot {
 
   public setCommand = async (guildId: string) => {
     const roles = await this.roles.getRoles({ guildId });
-    const commands = getCommands({ roles });
+    this.client.emojis.cache.values()
+    const commands = getCommands({ roles, emojies: this.client.emojis.cache });
 
     await Bot.rest
       .put(Routes.applicationGuildCommands(clientId, guildId), {
@@ -273,7 +274,7 @@ export class Bot {
         await this.addRole(interaction);
         break;
       case Commands.GetRoles:
-        await this.getRoles(interaction);
+        await this.roles.sendRoles(interaction);
         break;
       case Commands.DeleteRole:
         await this.deleteRole(interaction);
@@ -417,6 +418,10 @@ export class Bot {
   private addRole = async (interaction: CommandInteraction<CacheType>) => {
     const roleName = interaction.options.getString("role-name");
     const amount = interaction.options.getInteger("kiro-amount-required");
+    const color = interaction.options.getString("color") as ColorResolvable;
+    const emoji = interaction.options.getString("emoji")
+
+    console.log({ emoji })
     if (!roleName) return interaction.reply("role name required");
     if (!amount) return interaction.reply("amount required");
 
@@ -427,19 +432,10 @@ export class Bot {
         roleName,
         amount: amount.toString(),
         guildId,
+        color,
+        emoji
       });
       return interaction.reply("added");
-    } catch (e) {
-      return interaction.reply(e.message);
-    }
-  };
-
-  private getRoles = async (interaction: CommandInteraction<CacheType>) => {
-    const guildId = interaction.guild?.id;
-    if (!guildId) return interaction.reply("failed to fetch guild id");
-    try {
-      const roles = await this.roles.getRoles({ guildId });
-      console.log({ roles });
     } catch (e) {
       return interaction.reply(e.message);
     }
@@ -563,7 +559,7 @@ export class Bot {
 
           const address = user.getAddress();
           if (!address) continue;
-          
+
           const balance = await Vault.getKiroBalance({
             address,
             vaultAddress: user.getVaultAddress(),

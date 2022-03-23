@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
+import { Emoji, GuildEmoji } from "discord.js";
 
 export enum Commands {
   Connect = "connect",
@@ -11,15 +12,51 @@ export enum Commands {
   MyVault = "my-vault",
 }
 
+const colors = [
+  "DEFAULT",
+  "WHITE",
+  "AQUA",
+  "GREEN",
+  "BLUE",
+  "YELLOW",
+  "PURPLE",
+  "LUMINOUS_VIVID_PINK",
+  "GOLD",
+  "ORANGE",
+  "RED",
+  "GREY",
+  "NAVY",
+  "DARK_BLUE",
+  "DARK_PURPLE",
+  "DARK_VIVID_PINK",
+  "DARK_GOLD",
+  "DARK_ORANGE",
+  "DARK_RED",
+  "LIGHT_GREY",
+  "DARK_NAVY",
+  "DARK_BUT_NOT_BLACK",
+  "NOT_QUITE_BLACK",
+  "RANDOM",
+] as const;
+
+Emoji
+
 export const getCommands = ({
   roles,
+  emojies,
 }: {
   roles: { name: string; value: string; amount: string }[];
+  emojies: Map<string, GuildEmoji>
 }) => {
+
+  const emojiesChoices:[string, string][] = []
+  for(const emoji of emojies.values()) {
+    emojiesChoices.push([emoji.url, emoji.url]);
+  }
   const roleChoices = roles.map(
     (role) => [role.name, role.name] as [string, string]
   );
-
+  const colorChoices = colors.map((color) => [color, color] as [string, string])
   return [
     new SlashCommandBuilder()
       .setName(Commands.Connect)
@@ -63,6 +100,17 @@ export const getCommands = ({
             "amount of kiro on user balance required to get this role"
           )
           .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName("color")
+          .setDescription("role color")
+          .addChoices(colorChoices)
+      )
+      .addStringOption((option) => 
+        option
+        .setName("emoji")
+        .setDescription("role emoji")
       )
       .setDefaultPermission(false),
     new SlashCommandBuilder()

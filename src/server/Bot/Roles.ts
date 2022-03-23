@@ -1,7 +1,16 @@
-import { Client } from "discord.js";
+import {
+  CacheType,
+  Client,
+  ColorResolvable,
+  CommandInteraction,
+  EmbedFieldData,
+} from "discord.js";
 import Keyv from "keyv";
+import { VAULT_URL } from "../constants";
 import { Bot } from "./Bot";
+import { UI } from "./UI";
 
+type RoleDb = { amount: string; emoji: string | null; color?: string };
 export class Roles {
   private client: Client<boolean>;
   private rolesDb: Keyv;
@@ -12,7 +21,7 @@ export class Roles {
 
   public updateRoleCommands = async ({ guildId }: { guildId: string }) => {
     const roles = await this.getRoles({ guildId });
-    
+
     Bot.setSubCommands({
       guildId,
       values: roles,
@@ -26,12 +35,16 @@ export class Roles {
     roleName,
     amount,
     guildId,
+    emoji,
+    color,
   }: {
     roleName: string;
     amount: string;
     guildId: string;
+    emoji: string | null;
+    color?: ColorResolvable;
   }) => {
-    await this.rolesDb.set(roleName, amount);
+    await this.rolesDb.set(roleName, { amount, emoji, color } as RoleDb);
     const guild = this.client.guilds.cache.get(guildId);
 
     if (!guild) return;
@@ -39,7 +52,7 @@ export class Roles {
       if (role.name === roleName) return;
     }
 
-    await guild.roles.create({ name: roleName });
+    await guild.roles.create({ name: roleName, color });
     this.updateRoleCommands({ guildId });
   };
 
@@ -63,26 +76,53 @@ export class Roles {
     this.updateRoleCommands({ guildId });
   };
 
+  public sendRoles = async (interaction: CommandInteraction<CacheType>) => {
+    if (!interaction.guildId) {
+      interaction.reply("guild not found");
+      return;
+    }
+    const roles = await this.getRoles({ guildId: interaction.guildId });
+    const fields: EmbedFieldData[] = roles.map((role) => {
+      const name = role.emoji
+        ? `${role.emoji} ${role.name.toUpperCase()}: ${role.amount} Kiro`
+        : `${role.name.toLocaleUpperCase()}: ${role.amount} Kiro`;
+
+      return { name, value: "\u200b" };
+    });
+
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
+    const embed = UI.getMessageEmbedWith({
+      title: "Kirobo Roles",
+      url: VAULT_URL,
+      fields,
+      thumbnail: "attachment://vault.png",
+      footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
+    });
+
+    interaction.reply({ embeds: [embed], files: [attachment, logoAttachment] });
+  };
+
   public getRoles = async ({ guildId }: { guildId: string }) => {
     const guild = this.client.guilds.cache.get(guildId);
 
     const roles = [];
     if (!guild) return [];
     for (const role of guild.roles.cache.values()) {
-      const amount = await this.rolesDb.get(role.name) as string;
-      if (amount) {
+      const roleDb: RoleDb = await this.rolesDb.get(role.name);
+      if (roleDb) {
         roles.push({
           name: role.name,
           value: role.name,
-          amount,
+          amount: roleDb.amount,
           id: role.id,
+          color: role.color,
+          emoji: roleDb.emoji,
         });
       }
     }
     return roles;
-  };
-
-  public getData = async ({ roleName }: { roleName: string }) => {
-    return await this.rolesDb.get(roleName);
   };
 }
