@@ -17,6 +17,6 @@ export class Web3Subscriber {
         callback(e.number);
       })
       .on("connected", async () => {})
-      .on("error", (e) => console.log("subscribe error", e));
+      .on("error", (e) => console.error("subscribe error", e));
   };
 }

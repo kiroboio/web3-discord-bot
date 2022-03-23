@@ -48,9 +48,13 @@ export class Permissions {
     if (!botAdminRoleId) return;
 
     for (const user of users) {
-      if (!user.permissions.has(DiscordPermissions.FLAGS.MANAGE_ROLES))
+      if (
+        !user.permissions.has(DiscordPermissions.FLAGS.MANAGE_ROLES) ||
+        user.id === clientId
+      )
         continue;
-      user.roles.add(botAdminRoleId);
+
+      await user.roles.add(botAdminRoleId).catch(console.error);
     }
 
     roleAdminCommands.map((cmd) =>
@@ -64,7 +68,7 @@ export class Permissions {
                 permission: true,
               },
             ],
-          },
+          }
         })
         .catch((e) => console.error(e.message))
     );

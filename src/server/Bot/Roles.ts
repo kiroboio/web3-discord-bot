@@ -64,21 +64,17 @@ export class Roles {
     this.updateRoleCommands({ guildId });
   };
 
-  public createBotAdminRole = async ({
-
-    guildId,
-  }: {
- 
-    guildId: string;
-
-  }) => {
+  public createBotAdminRole = async ({ guildId }: { guildId: string }) => {
     const guild = this.client.guilds.cache.get(guildId);
-    if(!guild) return;
+    if (!guild) return;
     for (const role of guild.roles.cache.values()) {
       if (role.name === "kirobo-bot-admin") return role.id;
     }
-    const botAdminRole = await guild.roles.create({ name: "kirobo-bot-admin", color: "BLUE" });
-    
+    const botAdminRole = await guild.roles.create({
+      name: "kirobo-bot-admin",
+      color: "BLUE",
+    });
+
     return botAdminRole.id;
   };
 
@@ -107,7 +103,13 @@ export class Roles {
       interaction.reply("guild not found");
       return;
     }
-    const roles = await this.getRoles({ guildId: interaction.guildId });
+    const roles = (await this.getRoles({ guildId: interaction.guildId })).sort(
+      (role1, role2) => {
+        if (parseFloat(role1.amount) < parseFloat(role2.amount)) return 1;
+        if (parseFloat(role1.amount) > parseFloat(role2.amount)) return -1;
+        return 0;
+      }
+    );
     const fields: EmbedFieldData[] = roles.map((role) => {
       const name = role.emoji
         ? `${role.emoji} ${role.name.toUpperCase()}: ${role.amount} Kiro`
@@ -136,20 +138,20 @@ export class Roles {
       interaction.reply("guild not found");
       return;
     }
-    const role = await this.getUserRole({ guildId: interaction.guildId, userId: interaction.user.id });
+    const role = await this.getUserRole({
+      guildId: interaction.guildId,
+      userId: interaction.user.id,
+    });
 
-    let name: string
-    if(role) {
+    let name: string;
+    if (role) {
       name = role.emoji
-      ? `${role.emoji} ${role.name.toUpperCase()}: ${role.amount} Kiro`
-      : `${role.name.toLocaleUpperCase()}: ${role.amount} Kiro`;
+        ? `${role.emoji} ${role.name.toUpperCase()}: ${role.amount} Kiro`
+        : `${role.name.toLocaleUpperCase()}: ${role.amount} Kiro`;
     } else {
-      name = "You don't have any role, try to get some Kiro"
+      name = "You don't have any role, try to get some Kiro";
     }
     const field: EmbedFieldData = { name, value: "\u200b" };
-
-
-    
 
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
     const logoAttachment = UI.getMessageImageAttachment({
@@ -205,7 +207,10 @@ export class Roles {
 
     for (const roleItems of member.roles.cache.values()) {
       const roleDb: RoleDb = await this.rolesDb.get(roleItems.name);
-      if (roleDb && parseFloat(roleDb.amount) > parseFloat(role?.amount || "-1") ) {
+      if (
+        roleDb &&
+        parseFloat(roleDb.amount) > parseFloat(role?.amount || "-1")
+      ) {
         role = {
           name: roleItems.name,
           value: roleItems.name,

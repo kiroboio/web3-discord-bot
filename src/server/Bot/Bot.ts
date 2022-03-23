@@ -293,7 +293,6 @@ export class Bot {
 
   private isUserExist = async (interaction: CommandInteraction<CacheType>) => {
     const user = await this.usersDb.get(interaction.user.id);
-    console.log({ user });
     if (!user) {
       const connectButton = UI.getButton({
         label: "Connect",
@@ -430,9 +429,8 @@ export class Bot {
     const color = interaction.options.getString("color") as ColorResolvable;
     const emoji = interaction.options.getString("emoji");
 
-    console.log({ emoji });
-    if (!roleName) return interaction.reply("role name required");
-    if (!amount) return interaction.reply("amount required");
+    if (!roleName) return interaction.reply({ content: "role name required", ephemeral: true });
+    if (!amount) return interaction.reply({ content: "amount required", ephemeral: true });
 
     const guildId = interaction.guild?.id;
     if (!guildId) return interaction.reply("failed to fetch guild id");
@@ -444,24 +442,24 @@ export class Bot {
         color,
         emoji,
       });
-      return interaction.reply("added");
+      return interaction.reply({ content: "added", ephemeral: true });
     } catch (e) {
-      return interaction.reply(e.message);
+      return interaction.reply({ content: e.message, ephemeral: true });
     }
   };
 
   private deleteRole = async (interaction: CommandInteraction<CacheType>) => {
     const roleName = interaction.options.getString("role-name");
 
-    if (!roleName) return interaction.reply("role name required");
+    if (!roleName) return interaction.reply({ content: "role name required", ephemeral: true });
 
     const guildId = interaction.guild?.id;
-    if (!guildId) return interaction.reply("failed to fetch guild id");
+    if (!guildId) return interaction.reply({ content: "failed to fetch guild id", ephemeral: true });
     try {
       await this.roles.deleteRole({ roleName, guildId });
-      return interaction.reply("deleted");
+      return interaction.reply({ content: "deleted", ephemeral: true });
     } catch (e) {
-      return interaction.reply(e.message);
+      return interaction.reply({ content: e.message, ephemeral: true });
     }
   };
 

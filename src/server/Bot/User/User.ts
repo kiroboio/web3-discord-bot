@@ -20,7 +20,6 @@ import Keyv from "keyv";
 import { Roles } from "../Roles";
 import { NFTs } from "./NFTs";
 
-
 config();
 
 const app = express();
@@ -225,7 +224,6 @@ export class User extends NFTs {
     });
   };
 
-
   public updateUserRoles = async ({
     totalBalance,
   }: {
@@ -239,7 +237,7 @@ export class User extends NFTs {
     if (!user) return;
     const roles = await this.roles.getRoles({ guildId: guild.id });
 
-    roles.forEach((role) => {
+    roles.forEach(async (role) => {
       const guildRole = guild.roles.cache.get(role.id);
       if (parseFloat(role.amount) <= balanceNumber && guildRole) {
         user.roles.add(guildRole.id).catch(console.error);
