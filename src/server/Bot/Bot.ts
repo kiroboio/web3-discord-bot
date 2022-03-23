@@ -406,6 +406,8 @@ export class Bot {
     }
 
     await this.usersDb.delete(interaction.user.id);
+    
+    this.users[interaction.user.id]?.removeAllListeners()
     delete this.users[interaction.user.id];
     interaction.reply({ content: "disconnected", ephemeral: true });
   };

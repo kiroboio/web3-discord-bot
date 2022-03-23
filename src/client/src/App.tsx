@@ -24,8 +24,6 @@ const App = () => {
   user.current.userId = params.get("userId") as string;
 
   window.history.replaceState({}, document.title, "/");
-
-  console.log({ user: user.current });
   ethereum
     ?.request({ method: "eth_requestAccounts" })
     .then((accounts: string[]) => {

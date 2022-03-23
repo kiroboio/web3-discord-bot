@@ -20,6 +20,7 @@ import Keyv from "keyv";
 import { Roles } from "../Roles";
 import { Web3Vault } from "../../Web3/Web3Vault";
 import { NFTs } from "./NFTs";
+import Web3 from "web3";
 
 config();
 
@@ -37,7 +38,8 @@ export class User extends NFTs {
   private guildId: string;
   private usersDb: Keyv;
   private roles: Roles;
-
+  private socket: IoSocket;
+  private eth: Web3["eth"];
   constructor({
     client,
     userId,
@@ -74,6 +76,15 @@ export class User extends NFTs {
     return this.address;
   };
 
+  public removeAllListeners = () => {
+    if(this.socket) {
+      this.socket.removeAllListeners("account")
+    }
+    if(this.eth) {
+      this.eth.clearSubscriptions((error, result) => console.log({ clearSubscriptionsError: error, clearSubscriptions: result }));
+    }
+  }
+
   public startAccountListener = ({
     socket,
     channelId,
@@ -88,9 +99,9 @@ export class User extends NFTs {
       account: string;
       userId: string;
     }) => {
-      this?.onAccountChange({ account, userId, channelId });
+      this?.handleAccountChange({ account, userId, channelId });
     };
-    socket.on("account", listener);
+    socket.once("account", listener);
   };
 
   private getMessageToUserEmbeds = ({
@@ -141,7 +152,7 @@ export class User extends NFTs {
     channel.send({ embeds, files });
   };
 
-  private onAccountChange = async ({
+  private handleAccountChange = async ({
     account,
     userId,
     channelId,
@@ -179,7 +190,7 @@ export class User extends NFTs {
     await this.updateUserRoles({ totalBalance: balance.total });
   };
 
-  public getVaultMessage = async ({ }: { channelId: string }) => {
+  public getVaultMessage = async ({ }: { channelId?: string }) => {
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
     const logoAttachment = UI.getMessageImageAttachment({
       imageName: "kirogo",
@@ -215,14 +226,13 @@ export class User extends NFTs {
         },
       ],
     });
-
-    //this.sendMessage({ embeds: message.embeds, files: message.files, channelId })
   };
 
   private subscribe = () => {
-    Web3Vault.subscribeOnNewBlock({
+    this.subscribeOnNewBlock({
       chainId: "4",
-      callback: async () => {
+      callback: async (blockNumber) => {
+        console.log({ blockNumber })
         if (!this.address) return;
         const balance = await Vault.getKiroBalance({
           address: this.address,
@@ -233,6 +243,28 @@ export class User extends NFTs {
       },
     });
   };
+
+  public subscribeOnNewBlock = ({
+    chainId,
+    callback,
+  }: {
+    chainId: "1" | "4";
+    callback: (blockNumber: number) => void;
+  }) => {
+    const eth = Web3Vault.web3[chainId].eth
+    this.eth = eth;
+    this.eth
+      .subscribe("newBlockHeaders")
+      .on("data", (e) => {
+        if (!e.number) return;
+        callback(e.number);
+      })
+      .on("connected", async () => {})
+      .on("error", (e) => console.log("subscribe error", e));
+
+  
+  };
+
 
   private updateUserRoles = async ({
     totalBalance,

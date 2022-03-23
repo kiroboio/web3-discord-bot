@@ -87,28 +87,11 @@ export class Web3Vault {
     }
   };
 
-  public static subscribeOnNewBlock = ({
-    chainId,
-    callback,
-  }: {
-    chainId: "1" | "4";
-    callback: (blockNumber: number) => void;
-  }) => {
-    this.web3[chainId].eth
-      .subscribe("newBlockHeaders")
-      .on("data", (e) => {
-        if (!e.number) return;
-        callback(e.number);
-      })
-      .on("connected", async () => {})
-      .on("error", (e) => console.log("subscribe error", e));
-  };
-
-  private static provider = {
+  public static provider = {
     "1": new Web3.providers.WebsocketProvider(RPC_URLS[1]),
     "4": new Web3.providers.WebsocketProvider(RPC_URLS[4]),
   };
-  private static web3 = {
+  public static web3 = {
     "1": new Web3(this.provider["1"]),
     "4": new Web3(this.provider["4"]),
   };
