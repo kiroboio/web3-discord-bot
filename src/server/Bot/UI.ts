@@ -81,8 +81,29 @@ export class UI {
   }) => {
     return new MessageActionRow().addComponents(
       new MessageButton().setCustomId(customId).setLabel(label).setStyle(style)
-    );
+    )
   };
+
+  public static getButtonsRow = ({
+    label,
+    customId,
+    style = "PRIMARY",
+    secondLabel,
+    secondCustomId,
+    secondStyle = "SECONDARY",
+  }: {
+    label: string;
+    customId: string;
+    secondLabel: string;
+    secondCustomId: string;
+    style?: MessageButtonStyleResolvable;
+    secondStyle?: MessageButtonStyleResolvable;
+  }) => {
+    return new MessageActionRow().addComponents(
+      [new MessageButton().setCustomId(customId).setLabel(label).setStyle(style), new MessageButton().setCustomId(secondCustomId).setLabel(secondLabel).setStyle(secondStyle)]
+    )
+  };
+
 
   public static getMessageImageAttachment = ({
     imageName,

@@ -3,7 +3,9 @@ import {
   Client,
   ColorResolvable,
   CommandInteraction,
+  EmbedField,
   TextChannel,
+  Permissions as DiscordPermissions,
 } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
@@ -16,7 +18,7 @@ import { User } from "./User";
 import Keyv from "keyv";
 import { Roles } from "./Roles";
 import { Permissions } from "./Permissions";
-import { getCommands, Commands } from "./commands";
+import { getCommands, Commands, adminOnlyCommands } from "./commands";
 import { UI } from "./UI";
 import { VAULT_URL } from "../constants";
 import open from "open";
@@ -107,10 +109,11 @@ export class Bot {
 
     if (!command) return;
 
+
     const prevChoices = withPrevChoices
       ? command.options[0]?.choices?.map(
-          (choice) => [choice.name, choice.value] as [string, string]
-        )
+        (choice) => [choice.name, choice.value] as [string, string]
+      )
       : [];
     const currentChoices = values.map(
       (choice) => [choice.name, choice.value] as [string, string]
@@ -164,7 +167,7 @@ export class Bot {
 
     for (const channel of guild.channels.cache.values()) {
       if (channel.name === "web3-kirobo-config") {
-        return;
+        await channel.delete();
       }
     }
     const channel = await guild.channels
@@ -192,14 +195,17 @@ export class Bot {
         url: VAULT_URL,
       },
     });
-    const connectButton = UI.getButton({
+    const buttons = UI.getButtonsRow({
       label: "Connect",
       customId: "connect",
+      secondLabel: "Help",
+      secondCustomId: 'help'
     });
+
     guildChannel
       .send({
         embeds: [connectMessage],
-        components: [connectButton],
+        components: [buttons],
         files: [attachment, logoAttachment],
       })
       .then((message) => message.pin());
@@ -212,7 +218,8 @@ export class Bot {
   public setCommand = async (guildId: string) => {
     const roles = await this.roles.getRoles({ guildId });
     this.client.emojis.cache.values();
-    const commands = getCommands({ roles, emojies: this.client.emojis.cache });
+    const commands = getCommands({ roles });
+
 
     await Bot.rest
       .put(Routes.applicationGuildCommands(clientId, guildId), {
@@ -250,11 +257,18 @@ export class Bot {
         case Commands.Connect:
           await this.connectOnButtonClick(interaction);
           break;
+
+        case Commands.Help:
+          await this.help(interaction);
+          break;
       }
     }
 
     if (!interaction.isCommand()) return;
     switch (interaction.commandName) {
+      case Commands.Help:
+        await this.help(interaction);
+        break;
       case Commands.Connect:
         await this.connect(interaction);
         break;
@@ -309,6 +323,49 @@ export class Bot {
 
     return true;
   };
+
+  private help = async (interaction: CommandInteraction<CacheType>) => {
+    if (!interaction.guildId) return;
+    const roles = await this.roles.getRoles({ guildId: interaction.guildId });
+    this.client.emojis.cache.values();
+    const commands = getCommands({ roles })
+
+    const member = this.client.guilds.cache.get(interaction.guildId)?.members.cache.get(interaction.user.id)
+
+    const isRoleManager = member?.permissions?.has(DiscordPermissions.FLAGS.MANAGE_ROLES);
+
+    const fields: EmbedField[] = [];
+    commands.forEach((command) => {
+      if (!isRoleManager && adminOnlyCommands.includes(command.name as Commands)) return
+      fields.push({
+        name: `/${command.name}`,
+        // @ts-expect-error: description exists
+        value: command?.description,
+        inline: false
+      })
+    })
+
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
+    const connectMessage = UI.getMessageEmbedWith({
+      thumbnail: "attachment://vault.png",
+      fields,
+      author: {
+        name: "Kirobo Vault Bot",
+        iconURL: "attachment://kirogo.png",
+        url: VAULT_URL,
+      },
+    });
+
+    interaction
+      .reply({
+        embeds: [connectMessage],
+        files: [attachment, logoAttachment],
+        ephemeral: true,
+      })
+  }
 
   private connect = async (interaction: CommandInteraction<CacheType>) => {
     const userDb = await this.usersDb.get(interaction.user.id);

@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { GuildEmoji } from "discord.js";
 
 export enum Commands {
+  Help = 'help',
   Connect = "connect",
   Disconnect = "disconnect",
   GetNfts = "get-nfts",
@@ -12,6 +12,9 @@ export enum Commands {
   AddRole = "add-role",
   MyVault = "my-vault",
 }
+
+export const adminOnlyCommands = [Commands.AddRole, Commands.DeleteRole] 
+
 
 const colors = [
   "DEFAULT",
@@ -40,17 +43,13 @@ const colors = [
   "RANDOM",
 ] as const;
 
+
 export const getCommands = ({
   roles,
-  emojies,
 }: {
   roles: { name: string; value: string; amount: string }[];
-  emojies: Map<string, GuildEmoji>;
 }) => {
-  const emojiesChoices: [string, string][] = [];
-  for (const emoji of emojies.values()) {
-    emojiesChoices.push([emoji.url, emoji.url]);
-  }
+
   const roleChoices = roles.map(
     (role) => [role.name, role.name] as [string, string]
   );
@@ -59,71 +58,76 @@ export const getCommands = ({
   );
   return [
     new SlashCommandBuilder()
+      .setName(Commands.Help)
+      .setDescription("Get this bot slash commands info"),
+
+    new SlashCommandBuilder()
       .setName(Commands.Connect)
-      .setDescription("Connect metamask account to this bot"),
+      .setDescription("Connect to metamask account"),
 
     new SlashCommandBuilder()
       .setName(Commands.Disconnect)
-      .setDescription("Disconnect metamask account"),
+      .setDescription("Disconnect from metamask account"),
 
     new SlashCommandBuilder()
       .setName(Commands.MyVault)
       .setDescription("Show My Vault Info"),
 
     new SlashCommandBuilder()
-      .setName(Commands.GetRoles)
-      .setDescription("get roles"),
-
-    new SlashCommandBuilder()
-      .setName(Commands.MyRole)
-      .setDescription("get my role according kiro amount"),
-
-    new SlashCommandBuilder()
-      .setName(Commands.DeleteRole)
-      .setDescription("delete role by name")
-      .addStringOption((option) =>
-        option
-          .setName("role-name")
-          .setDescription("role name")
-          .addChoices(roleChoices)
-      )
-      .setDefaultPermission(false),
-
-    new SlashCommandBuilder()
       .setName(Commands.AddRole)
-      .setDescription("add role")
+      .setDescription("Add Kirobo role according to Kiro amount")
       .addStringOption((option) =>
         option
           .setName("role-name")
-          .setDescription("add role name")
+          .setDescription("Add role name")
           .setRequired(true)
       )
       .addIntegerOption((option) =>
         option
           .setName("kiro-amount-required")
           .setDescription(
-            "amount of kiro on user balance required to get this role"
+            "Amount of Kiro on user balance (including Vault) required to get this role"
           )
           .setRequired(true)
       )
       .addStringOption((option) =>
         option
           .setName("color")
-          .setDescription("role color")
+          .setDescription("Role color")
           .addChoices(colorChoices)
       )
       .addStringOption((option) =>
-        option.setName("emoji").setDescription("role emoji")
+        option.setName("emoji").setDescription("Role emoji")
       )
       .setDefaultPermission(false),
+
+    new SlashCommandBuilder()
+      .setName(Commands.GetRoles)
+      .setDescription("Get Kirobo roles"),
+
+    new SlashCommandBuilder()
+      .setName(Commands.MyRole)
+      .setDescription("Get my Kirobo role according to Kiro amount"),
+
+    new SlashCommandBuilder()
+      .setName(Commands.DeleteRole)
+      .setDescription("Delete Kirobo role by name")
+      .addStringOption((option) =>
+        option
+          .setName("role-name")
+          .setDescription("Role name")
+          .addChoices(roleChoices)
+      )
+      .setDefaultPermission(false),
+
     new SlashCommandBuilder()
       .setName(Commands.GetNfts)
-      .setDescription("get nfts data")
+      .setDescription("Get nfts data. TBA")
       .setDefaultPermission(false),
 
     new SlashCommandBuilder()
       .setName(Commands.SendNft)
-      .setDescription("send nft image")
+      .setDescription("Send nft image. TBA")
       .setDefaultPermission(false),
   ].map((command) => command.toJSON());
 };

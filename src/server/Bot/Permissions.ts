@@ -2,6 +2,7 @@ import { Routes } from "discord-api-types/v9";
 import { Client, Permissions as DiscordPermissions } from "discord.js";
 import { config } from "dotenv";
 import { Bot, CommandType } from "./Bot";
+import { adminOnlyCommands, Commands } from "./commands";
 import { Roles } from "./Roles";
 
 config();
@@ -37,7 +38,7 @@ export class Permissions {
       .catch((e) => console.error({ error: e.message }))) as CommandType[];
     if (!commands) return;
     const roleAdminCommands = commands.filter(
-      (command) => command.name === "add-role" || command.name === "delete-role"
+      (command) => adminOnlyCommands.includes(command.name as Commands)
     );
     if (!roleAdminCommands) return;
 
