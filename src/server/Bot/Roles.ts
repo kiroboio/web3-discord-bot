@@ -4,10 +4,11 @@ import {
   ColorResolvable,
   CommandInteraction,
   EmbedFieldData,
+
 } from "discord.js";
-import Keyv from "keyv";
 import { VAULT_URL } from "../constants";
 import { Bot } from "./Bot";
+import { Guild } from "./Guild";
 import { UI } from "./UI";
 
 type RoleDb = { amount: string; emoji: string | null; color?: string };
@@ -20,11 +21,11 @@ type Role = {
   emoji: string | null;
 };
 export class Roles {
+  public guilds: { [key: string]: Guild | undefined } = {};
+  
   private client: Client<boolean>;
-  private rolesDb: Keyv;
-  constructor({ client, rolesDb }: { client: Client<boolean>; rolesDb: Keyv }) {
+  constructor({ client }: { client: Client<boolean>   }) {
     this.client = client;
-    this.rolesDb = rolesDb;
   }
 
   public updateRoleCommands = async ({ guildId }: { guildId: string }) => {
@@ -52,7 +53,7 @@ export class Roles {
     emoji: string | null;
     color?: ColorResolvable;
   }) => {
-    await this.rolesDb.set(roleName, { amount, emoji, color } as RoleDb);
+    await this.guilds[guildId]?.rolesDb.set(roleName, { amount, emoji, color } as RoleDb);
     const guild = this.client.guilds.cache.get(guildId);
 
     if (!guild) return;
@@ -85,7 +86,7 @@ export class Roles {
     roleName: string;
     guildId: string;
   }) => {
-    await this.rolesDb.delete(roleName);
+    await this.guilds[guildId]?.rolesDb.delete(roleName);
     const guild = this.client.guilds.cache.get(guildId);
 
     if (!guild) return;
@@ -174,7 +175,7 @@ export class Roles {
     const roles = [];
     if (!guild) return [];
     for (const role of guild.roles.cache.values()) {
-      const roleDb: RoleDb = await this.rolesDb.get(role.name);
+      const roleDb: RoleDb = await this.guilds[guildId]?.rolesDb.get(role.name);
       if (roleDb) {
         roles.push({
           name: role.name,
@@ -206,7 +207,7 @@ export class Roles {
     if (!member) return role;
 
     for (const roleItems of member.roles.cache.values()) {
-      const roleDb: RoleDb = await this.rolesDb.get(roleItems.name);
+      const roleDb: RoleDb = await this.guilds[guildId]?.rolesDb.get(roleItems.name);
       if (
         roleDb &&
         parseFloat(roleDb.amount) > parseFloat(role?.amount || "-1")

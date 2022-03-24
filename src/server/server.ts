@@ -11,7 +11,7 @@ import { DEFAULT_PORT } from "./constants";
 import Keyv from "keyv";
 config();
 
-const mongoUrl = "mongodb://localhost:27017/local";
+export const mongoUrl = "mongodb://localhost:27017/local";
 
 const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: "roles" });
 const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: "users" });
@@ -56,8 +56,8 @@ const bot = new Bot({
 client.on("ready", async () => {
   const guilds: string[] = client.guilds.cache.map((guild) => guild.id);
 
+  bot.setGuilds({ guilds })
   await bot.setCommands({ guilds });
-
   await bot.setConnectedUsers({ guilds });
   await bot.handleChainChange();
   bot.setGuildsBotChannel({ guilds });
@@ -65,11 +65,17 @@ client.on("ready", async () => {
 });
 
 client.on("guildCreate", (guild) => {
-  console.log({ guildCreate: "guildCreate", guild });
+  console.log({ guildCreate: "guildCreated", guild: guild.id });
+  bot.setGuild(guild.id)
   bot.setCommand(guild.id);
   bot.setGuildBotChannel({ guildId: guild.id });
   bot.permissions.setAdminCommandsPermissions({ guildId: guild.id })
 });
+
+client.on("guildDelete", (guild) => {
+  console.log("guildDeleted", { guild: guild.id })
+  bot.deleteGuild(guild.id)
+})
 
 client.on("roleCreate", (role) => {
   bot.permissions.setAdminCommandsPermissions({ guildId: role.guild.id })

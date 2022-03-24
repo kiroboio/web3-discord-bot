@@ -24,6 +24,8 @@ import { VAULT_URL } from "../constants";
 import open from "open";
 import { Web3Subscriber } from "../Web3/Web3Subscriber";
 import { Vault } from "../Web3/Vault";
+import { Guild } from "./Guild";
+import { mongoUrl } from "../server";
 
 config();
 
@@ -56,20 +58,19 @@ export type CommandType = {
 
 export class Bot {
   public static rest: REST;
-  public usersDb: Keyv;
   public permissions;
 
   private client: Client<boolean>;
   private io: IO;
   private users: { [key: string]: User | undefined } = {};
+  private guilds: { [key: string]: Guild | undefined } = {};
+
   private roles;
   private chainId: 1 | 4 = 4;
   constructor({
     client,
     rest,
     io,
-    rolesDb,
-    usersDb,
   }: {
     client: Client<boolean>;
     rest: REST;
@@ -81,8 +82,7 @@ export class Bot {
 
     this.client = client;
     this.io = io;
-    this.usersDb = usersDb;
-    this.roles = new Roles({ client, rolesDb });
+    this.roles = new Roles({ client });
     this.permissions = new Permissions({ client, roles: this.roles });
     this.subscribeUsers();
   }
@@ -141,7 +141,7 @@ export class Bot {
     const users = this.client.users.cache.values();
     await Promise.all(guilds.map(async (guildId) => {
       for (const user of users) {
-        const dbUser = (await this.usersDb.get(user.id)) as
+        const dbUser = (await this.guilds[guildId]?.usersDb.get(user.id)) as
           | { wallet: string; vault?: string }
           | undefined;
         if (!dbUser) continue;
@@ -211,6 +211,36 @@ export class Bot {
       })
       .then((message) => message.pin());
   };
+
+  public setGuilds = ({ guilds }: { guilds: string[] }) => {
+    return guilds.map(this.setGuild);
+  };
+
+  public setGuild = (guildId: string) => {
+    const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: `guild:${guildId}:roles` });
+    const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: `guild:${guildId}:users` });
+
+    const newGuild = new Guild({
+      usersDb: keyvUsers,
+      rolesDb: keyvRoles,
+      guildId
+    })
+    this.guilds[guildId] = newGuild;
+    this.roles.guilds[guildId] = newGuild;
+
+  }
+
+  public deleteGuild = (guildId: string) => {
+    const guild = this.guilds[guildId]
+
+    guild?.rolesDb.clear();
+    guild?.usersDb.clear();
+
+    delete this.guilds[guildId];
+    delete this.roles.guilds[guildId];
+
+  }
+
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
     return Promise.all(guilds.map(this.setCommand));
@@ -314,7 +344,8 @@ export class Bot {
   };
 
   private isUserExist = async (interaction: CommandInteraction<CacheType>) => {
-    const user = await this.usersDb.get(interaction.user.id);
+    if (!interaction.guildId) return
+    const user = await this.guilds[interaction.guildId]?.usersDb.get(interaction.user.id);
     if (!user) {
       const connectButton = UI.getButton({
         label: "Connect",
@@ -415,7 +446,8 @@ export class Bot {
   }
 
   private connect = async (interaction: CommandInteraction<CacheType>) => {
-    const userDb = await this.usersDb.get(interaction.user.id);
+    if (!interaction.guildId) return;
+    const userDb = await this.guilds[interaction.guildId]?.usersDb.get(interaction.user.id);
     if (userDb) {
       interaction.reply({ content: "Already connected", ephemeral: true });
       const user = this.users[interaction.user.id];
@@ -480,7 +512,8 @@ export class Bot {
   private connectOnButtonClick = async (
     interaction: CommandInteraction<CacheType>
   ) => {
-    const userDb = await this.usersDb.get(interaction.user.id);
+    if (!interaction.guildId) return;
+    const userDb = await this.guilds[interaction.guildId]?.usersDb.get(interaction.user.id);
     if (userDb) {
       const user = this.users[interaction.user.id];
       interaction.reply({ content: "Already connected", ephemeral: true });
@@ -524,7 +557,8 @@ export class Bot {
       return;
     }
 
-    await this.usersDb.delete(interaction.user.id);
+    if (!interaction.guildId) return;
+    await this.guilds[interaction.guildId]?.usersDb.delete(interaction.user.id);
 
     this.users[interaction.user.id]?.removeAllListeners();
     delete this.users[interaction.user.id];
@@ -649,11 +683,13 @@ export class Bot {
     address?: string;
     vaultAddress?: string;
   }) => {
+    const usersDb = this.guilds[guildId]?.usersDb;
+    if (!usersDb) throw new Error(`Users db for guildId ${guildId} not found`);
     const user = new User({
       client: this.client,
       userId,
       guildId,
-      usersDb: this.usersDb,
+      usersDb,
       address,
       vaultAddress,
       roles: this.roles,
