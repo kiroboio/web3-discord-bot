@@ -283,6 +283,7 @@ export class Bot {
         await this.roles.sendRoles(interaction);
         break;
       case Commands.MyRole:
+        if (!(await this.isUserExist(interaction))) return;
         await this.roles.sendRole(interaction);
         break;
       case Commands.DeleteRole:
