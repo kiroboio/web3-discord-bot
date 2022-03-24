@@ -63,6 +63,7 @@ export class Bot {
   private io: IO;
   private users: { [key: string]: User | undefined } = {};
   private roles;
+  private chainId: 1 | 4 = 4;
   constructor({
     client,
     rest,
@@ -269,6 +270,9 @@ export class Bot {
       case Commands.Help:
         await this.help(interaction);
         break;
+      case Commands.SetChain:
+        await this.setChain(interaction);
+        break;
       case Commands.Connect:
         await this.connect(interaction);
         break;
@@ -367,13 +371,44 @@ export class Bot {
       })
   }
 
+  private setChain = async (interaction: CommandInteraction<CacheType>) => {
+    const chainId: "1" | "4" | null = interaction.options.getString("chain-name") as "1" | "4" | null;
+
+    this.chainId = chainId ? Number(chainId) as 1 | 4 : 1;
+
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
+    const connectMessage = UI.getMessageEmbedWith({
+      title: "Current Chain",
+      color: chainId === "1" ? "BLUE" : "ORANGE",
+      description: chainId === "1" ? "Main" : "Rinkeby",
+      thumbnail: "attachment://vault.png",
+      footer: {
+        text: "Kirobo",
+        iconURL: "attachment://kirogo.png",
+      },
+    });
+
+    await this.handleChainChange();
+
+    interaction
+      .reply({
+        embeds: [connectMessage],
+        files: [attachment, logoAttachment],
+        ephemeral: true,
+      })
+
+  }
+
   private connect = async (interaction: CommandInteraction<CacheType>) => {
     const userDb = await this.usersDb.get(interaction.user.id);
     if (userDb) {
       interaction.reply({ content: "Already connected", ephemeral: true });
       const user = this.users[interaction.user.id];
       const message = await user?.getVaultMessage({
-        channelId: interaction.channelId,
+        chainId: this.chainId,
       });
       if (message && user) {
         user.sendMessage({
@@ -421,7 +456,7 @@ export class Bot {
     }
 
     const message = await user.getVaultMessage({
-      channelId: interaction.channelId,
+      chainId: this.chainId
     });
 
     return interaction.reply({
@@ -438,7 +473,7 @@ export class Bot {
       const user = this.users[interaction.user.id];
       interaction.reply({ content: "Already connected", ephemeral: true });
       const message = await user?.getVaultMessage({
-        channelId: interaction.channelId,
+        chainId: this.chainId,
       });
       if (message && user) {
         user.sendMessage({
@@ -530,7 +565,7 @@ export class Bot {
     }
 
     await interaction.deferReply();
-    const nfts = await user?.getNfts({ chain: "rinkeby" });
+    const nfts = await user?.getNfts({ chain: this.chainId === 1 ? "eth" : "rinkeby" });
 
     if (!nfts || !nfts.length) {
       interaction.editReply({ content: "not found" });
@@ -581,7 +616,7 @@ export class Bot {
         guildId,
       });
 
-      user?.startAccountListener({ socket, channelId: interaction.channelId });
+      user?.startAccountListener({ socket, channelId: interaction.channelId, chainId: this.chainId });
     };
     setTimeout(() => {
       token.token = "";
@@ -616,9 +651,24 @@ export class Bot {
     return user;
   };
 
+
+  private handleChainChange = async() => {
+
+    for (const user of Object.values(this.users)) {
+      if (!user) continue;
+
+      const address = user.getAddress();
+      if (!address) continue;
+
+
+      user.handleAccountChange({ account: address, userId: user.getUserId(), chainId: Number(this.chainId) as 1 | 4 });
+    }
+
+  };
+
   private subscribeUsers = () => {
     Web3Subscriber.subscribeOnNewBlock({
-      chainId: "4",
+      chainId: String(this.chainId) as "1" | "4",
       callback: async () => {
         for (const user of Object.values(this.users)) {
           if (!user) continue;
@@ -629,7 +679,7 @@ export class Bot {
           const balance = await Vault.getKiroBalance({
             address,
             vaultAddress: user.getVaultAddress(),
-            chainId: 4,
+            chainId: Number(this.chainId) as 1 | 4,
           });
           await user.updateUserRoles({ totalBalance: balance.total });
         }

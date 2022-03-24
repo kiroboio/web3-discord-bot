@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 
 export enum Commands {
   Help = 'help',
+  SetChain = 'set-chain',
   Connect = "connect",
   Disconnect = "disconnect",
   GetNfts = "get-nfts",
@@ -13,7 +14,7 @@ export enum Commands {
   MyVault = "my-vault",
 }
 
-export const adminOnlyCommands = [Commands.AddRole, Commands.DeleteRole] 
+export const adminOnlyCommands = [Commands.SetChain, Commands.AddRole, Commands.DeleteRole]
 
 
 const colors = [
@@ -60,6 +61,16 @@ export const getCommands = ({
     new SlashCommandBuilder()
       .setName(Commands.Help)
       .setDescription("Get this bot slash commands info"),
+    new SlashCommandBuilder()
+      .setName(Commands.SetChain)
+      .setDescription("Set Ethereum chain")
+      .addStringOption((option) =>
+        option
+          .setName("chain-name")
+          .setDescription("Ethereum chain name")
+          .addChoices([["main", "1"], ["rinkeby", "4"]])
+      )
+      .setDefaultPermission(false),
 
     new SlashCommandBuilder()
       .setName(Commands.Connect)

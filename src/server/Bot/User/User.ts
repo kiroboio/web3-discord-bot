@@ -81,9 +81,11 @@ export class User extends NFTs {
   public startAccountListener = ({
     socket,
     channelId,
+    chainId,
   }: {
     socket: IoSocket;
     channelId: string;
+    chainId: 1 | 4;
   }) => {
     const listener = ({
       account,
@@ -92,7 +94,7 @@ export class User extends NFTs {
       account: string;
       userId: string;
     }) => {
-      this?.handleAccountChange({ account, userId, channelId });
+      this?.handleAccountChange({ account, userId, channelId, chainId });
     };
     socket.once("account", listener);
   };
@@ -145,38 +147,39 @@ export class User extends NFTs {
     channel.send({ embeds, files });
   };
 
-  private handleAccountChange = async ({
+  public handleAccountChange = async ({
     account,
     userId,
+    chainId,
     channelId,
   }: {
     account: string;
     userId: string;
-    channelId: string;
+    chainId: 1 | 4;
+    channelId?: string;
   }) => {
     if (userId !== this.userId) return;
-    if (!account || account === this.address) return;
+    if (!account) return;
 
     this.address = account;
     this.usersDb.set(this.userId, { wallet: account });
-    await Vault.setVaultContract({ address: account, chainId: 4 });
+    await Vault.setVaultContract({ address: account, chainId });
 
     const vaultContract = Vault.contract[account];
     this.vaultAddress = vaultContract?.options.address;
-    if (vaultContract) {
-      this.usersDb.set(this.userId, {
-        wallet: account,
-        vault: vaultContract.options.address,
-      });
-    }
+    this.usersDb.set(this.userId, {
+      wallet: account,
+      vault: vaultContract?.options.address,
+    });
+
     const balance = await Vault.getKiroBalance({
       address: this.address,
       vaultAddress: this.vaultAddress,
-      chainId: 4,
+      chainId,
     });
 
-    const message = await this.getVaultMessage({ channelId });
-    if (message) {
+    const message = await this.getVaultMessage({ chainId });
+    if (message && channelId) {
       this.sendMessage({
         embeds: message.embeds,
         files: message.files,
@@ -186,7 +189,7 @@ export class User extends NFTs {
     await this.updateUserRoles({ totalBalance: balance.total });
   };
 
-  public getVaultMessage = async ({}: { channelId?: string }) => {
+  public getVaultMessage = async ({ chainId }: { chainId: 1 | 4 }) => {
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
     const logoAttachment = UI.getMessageImageAttachment({
       imageName: "kirogo",
@@ -196,7 +199,7 @@ export class User extends NFTs {
     const balance = await Vault.getKiroBalance({
       address: this.address,
       vaultAddress: this.vaultAddress,
-      chainId: 4,
+      chainId,
     });
 
     const userName = this.client.users.cache.get(this.userId)?.username;
