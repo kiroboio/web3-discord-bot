@@ -59,6 +59,7 @@ client.on("ready", async () => {
   await bot.setCommands({ guilds });
 
   await bot.setConnectedUsers({ guilds });
+  await bot.handleChainChange();
   bot.setGuildsBotChannel({ guilds });
   bot.permissions.setGuildsAdminCommandsPermissions({ guilds });
 });
@@ -67,6 +68,7 @@ client.on("guildCreate", (guild) => {
   console.log({ guildCreate: "guildCreate", guild });
   bot.setCommand(guild.id);
   bot.setGuildBotChannel({ guildId: guild.id });
+  bot.permissions.setAdminCommandsPermissions({ guildId: guild.id })
 });
 
 client.on("roleCreate", (role) => {

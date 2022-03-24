@@ -208,11 +208,25 @@ export class User extends NFTs {
         ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Vault`
         : "Vault",
       url: VAULT_URL,
-      description: this.vaultAddress ? this.vaultAddress : "Vault not found =(",
       thumbnail: "attachment://vault.png",
       footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
       files: [attachment, logoAttachment],
       fields: [
+        {
+          name: "Chain",
+          value: chainId === 1 ? "Main" : "Rinkeby",
+          inline: false,
+        },
+        {
+          name: "Wallet Address",
+          value: this.address,
+          inline: false,
+        },
+        {
+          name: "Vault Address",
+          value: this.vaultAddress ? this.vaultAddress : "Vault not found =(",
+          inline: false,
+        },
         {
           name: "Wallet Kiro Balance",
           value: balance.wallet,

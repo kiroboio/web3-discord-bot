@@ -6,11 +6,11 @@ export enum Commands {
   GetChain = 'get-chain',
   Connect = "connect",
   Disconnect = "disconnect",
-  MyVault = "my-vault",
+  MyVault = "get-my-vault",
   GetNfts = "get-nfts",
   SendNft = "send-nft",
   GetRoles = "get-roles",
-  MyRole = "my-role",
+  MyRole = "get-my-role",
   DeleteRole = "delete-role",
   AddRole = "add-role",
 }
@@ -70,6 +70,7 @@ export const getCommands = ({
           .setName("chain-name")
           .setDescription("Ethereum chain name")
           .addChoices([["main", "1"], ["rinkeby", "4"]])
+          .setRequired(true)
       )
       .setDefaultPermission(false),
 

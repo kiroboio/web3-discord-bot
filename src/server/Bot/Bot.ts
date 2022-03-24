@@ -139,7 +139,7 @@ export class Bot {
 
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
     const users = this.client.users.cache.values();
-    guilds.forEach(async (guildId) => {
+    await Promise.all(guilds.map(async (guildId) => {
       for (const user of users) {
         const dbUser = (await this.usersDb.get(user.id)) as
           | { wallet: string; vault?: string }
@@ -153,7 +153,7 @@ export class Bot {
           vaultAddress: dbUser.vault,
         });
       }
-    });
+    }));
   };
 
   public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
@@ -664,7 +664,7 @@ export class Bot {
   };
 
 
-  private handleChainChange = async () => {
+  public handleChainChange = async () => {
 
     for (const user of Object.values(this.users)) {
       if (!user) continue;
