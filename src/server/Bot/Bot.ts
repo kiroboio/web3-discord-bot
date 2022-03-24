@@ -273,6 +273,9 @@ export class Bot {
       case Commands.SetChain:
         await this.setChain(interaction);
         break;
+      case Commands.GetChain:
+        await this.getChain(interaction);
+        break;
       case Commands.Connect:
         await this.connect(interaction);
         break;
@@ -371,11 +374,7 @@ export class Bot {
       })
   }
 
-  private setChain = async (interaction: CommandInteraction<CacheType>) => {
-    const chainId: "1" | "4" | null = interaction.options.getString("chain-name") as "1" | "4" | null;
-
-    this.chainId = chainId ? Number(chainId) as 1 | 4 : 1;
-
+  private getChainReply = ({ chainId }: { chainId: string | null }) => {
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
     const logoAttachment = UI.getMessageImageAttachment({
       imageName: "kirogo",
@@ -391,14 +390,27 @@ export class Bot {
       },
     });
 
+    return ({
+      embeds: [connectMessage],
+      files: [attachment, logoAttachment],
+      ephemeral: true,
+    })
+  }
+
+  private getChain = async (interaction: CommandInteraction<CacheType>) => {
+    interaction
+      .reply(this.getChainReply({ chainId: String(this.chainId) }))
+  }
+
+  private setChain = async (interaction: CommandInteraction<CacheType>) => {
+    const chainId: "1" | "4" | null = interaction.options.getString("chain-name") as "1" | "4" | null;
+
+    this.chainId = chainId ? Number(chainId) as 1 | 4 : 1;
+
     await this.handleChainChange();
 
     interaction
-      .reply({
-        embeds: [connectMessage],
-        files: [attachment, logoAttachment],
-        ephemeral: true,
-      })
+      .reply(this.getChainReply({ chainId }))
 
   }
 
@@ -652,7 +664,7 @@ export class Bot {
   };
 
 
-  private handleChainChange = async() => {
+  private handleChainChange = async () => {
 
     for (const user of Object.values(this.users)) {
       if (!user) continue;

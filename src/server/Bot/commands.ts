@@ -3,15 +3,16 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 export enum Commands {
   Help = 'help',
   SetChain = 'set-chain',
+  GetChain = 'get-chain',
   Connect = "connect",
   Disconnect = "disconnect",
+  MyVault = "my-vault",
   GetNfts = "get-nfts",
   SendNft = "send-nft",
   GetRoles = "get-roles",
   MyRole = "my-role",
   DeleteRole = "delete-role",
   AddRole = "add-role",
-  MyVault = "my-vault",
 }
 
 export const adminOnlyCommands = [Commands.SetChain, Commands.AddRole, Commands.DeleteRole]
@@ -73,6 +74,10 @@ export const getCommands = ({
       .setDefaultPermission(false),
 
     new SlashCommandBuilder()
+      .setName(Commands.GetChain)
+      .setDescription("Get current Ethereum chain"),
+
+    new SlashCommandBuilder()
       .setName(Commands.Connect)
       .setDescription("Connect to metamask account"),
 
@@ -82,7 +87,7 @@ export const getCommands = ({
 
     new SlashCommandBuilder()
       .setName(Commands.MyVault)
-      .setDescription("Show My Vault Info"),
+      .setDescription("Show my Vault info"),
 
     new SlashCommandBuilder()
       .setName(Commands.AddRole)
