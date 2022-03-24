@@ -310,13 +310,14 @@ export class Bot {
   };
 
   private connect = async (interaction: CommandInteraction<CacheType>) => {
-    const user = this.users[interaction.user.id];
-    if (user) {
+    const userDb = await this.usersDb.get(interaction.user.id);
+    if (userDb) {
       interaction.reply({ content: "Already connected", ephemeral: true });
-      const message = await user.getVaultMessage({
+      const user = this.users[interaction.user.id];
+      const message = await user?.getVaultMessage({
         channelId: interaction.channelId,
       });
-      if (message) {
+      if (message && user) {
         user.sendMessage({
           embeds: message.embeds,
           files: message.files,
@@ -374,13 +375,14 @@ export class Bot {
   private connectOnButtonClick = async (
     interaction: CommandInteraction<CacheType>
   ) => {
-    const user = this.users[interaction.user.id];
-    if (user) {
+    const userDb = await this.usersDb.get(interaction.user.id);
+    if (userDb) {
+      const user = this.users[interaction.user.id];
       interaction.reply({ content: "Already connected", ephemeral: true });
-      const message = await user.getVaultMessage({
+      const message = await user?.getVaultMessage({
         channelId: interaction.channelId,
       });
-      if (message) {
+      if (message && user) {
         user.sendMessage({
           embeds: message.embeds,
           files: message.files,

@@ -69,12 +69,13 @@ client.on("guildCreate", (guild) => {
   bot.setGuildBotChannel({ guildId: guild.id });
 });
 
-client.on("roleCreate", (member) => {
-  bot.permissions.setAdminCommandsPermissions({ guildId: member.guild.id })
+client.on("roleCreate", (role) => {
+  bot.permissions.setAdminCommandsPermissions({ guildId: role.guild.id })
 })
 
-client.on("roleDelete", (member) => {
-  bot.permissions.setAdminCommandsPermissions({ guildId: member.guild.id })
+client.on("roleDelete", (role) => {
+  bot.permissions.setAdminCommandsPermissions({ guildId: role.guild.id })
+  keyvRoles.delete(role.name);
 })
 
 bot.runClient();
