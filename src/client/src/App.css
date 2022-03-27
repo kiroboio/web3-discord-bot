@@ -3,8 +3,26 @@
 }
 
 .App-logo {
-  height: 40vmin;
   pointer-events: none;
+}
+
+.Connect {
+  padding: 0;
+  border-width: 2px;
+  box-shadow: 4px 4px 4px #222;
+  border-color: #000;
+  height: 64px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: #7388D9;
+}
+.Connect-active {
+  cursor: pointer;
+}
+.Connect-active:hover {
+  background-color: #94AAFF;
 }
 
 @media (prefers-reduced-motion: no-preference) {

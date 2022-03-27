@@ -96,7 +96,7 @@ export class User extends NFTs {
     }) => {
       this?.handleAccountChange({ account, userId, channelId, chainId });
     };
-    socket.once("account", listener);
+    socket.on("account", listener);
   };
 
   private getMessageToUserEmbeds = ({

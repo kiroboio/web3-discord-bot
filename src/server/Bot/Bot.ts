@@ -497,22 +497,6 @@ export class Bot {
     interaction: CommandInteraction<CacheType>
   ) => {
     if (!interaction.guildId) return;
-    const userDb = await this.guilds[interaction.guildId]?.usersDb.get(interaction.user.id);
-    if (userDb) {
-      const user = this.users[interaction.user.id];
-      interaction.reply({ content: "Already connected", ephemeral: true });
-      const message = await user?.getVaultMessage({
-        chainId: this.chainId,
-      });
-      if (message && user) {
-        user.sendMessage({
-          embeds: message.embeds,
-          files: message.files,
-          channelId: interaction.channelId,
-        });
-      }
-      return;
-    }
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
