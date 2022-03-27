@@ -95,6 +95,7 @@ export class User extends NFTs {
       userId: string;
     }) => {
       this?.handleAccountChange({ account, userId, channelId, chainId });
+      socket.emit("connectedAccount", account)
     };
     socket.on("account", listener);
   };
@@ -224,7 +225,7 @@ export class User extends NFTs {
         },
         {
           name: "Vault Address",
-          value: this.vaultAddress ? this.vaultAddress : "Vault not found =(",
+          value: this.vaultAddress ? this.vaultAddress : "Vault not found :confounded:",
           inline: false,
         },
         {
