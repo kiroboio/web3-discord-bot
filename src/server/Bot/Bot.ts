@@ -20,12 +20,11 @@ import { Roles } from "./Roles";
 import { Permissions } from "./Permissions";
 import { getCommands, Commands, adminOnlyCommands } from "./commands";
 import { UI } from "./UI";
-import { VAULT_URL } from "../constants";
+import { VAULT_URL, MONGO_URL } from "../constants";
 import open from "open";
 import { Web3Subscriber } from "../Web3/Web3Subscriber";
 import { Vault } from "../Web3/Vault";
 import { Guild } from "./Guild";
-import { mongoUrl } from "../server";
 
 config();
 
@@ -59,11 +58,11 @@ export type CommandType = {
 export class Bot {
   public static rest: REST;
   public permissions;
+  public guilds: { [key: string]: Guild | undefined } = {};
 
   private client: Client<boolean>;
   private io: IO;
   private users: { [key: string]: User | undefined } = {};
-  private guilds: { [key: string]: Guild | undefined } = {};
 
   private roles;
   private chainId: 1 | 4 = 4;
@@ -75,8 +74,6 @@ export class Bot {
     client: Client<boolean>;
     rest: REST;
     io: IO;
-    rolesDb: Keyv;
-    usersDb: Keyv;
   }) {
     Bot.rest = rest;
 
@@ -217,8 +214,8 @@ export class Bot {
   };
 
   public setGuild = (guildId: string) => {
-    const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: `guild:${guildId}:roles` });
-    const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: `guild:${guildId}:users` });
+    const keyvRoles = new Keyv(`${MONGO_URL}`, { namespace: `guild:${guildId}:roles` });
+    const keyvUsers = new Keyv(`${MONGO_URL}`, { namespace: `guild:${guildId}:users` });
 
     const newGuild = new Guild({
       usersDb: keyvUsers,

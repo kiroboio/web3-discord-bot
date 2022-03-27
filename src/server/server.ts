@@ -8,16 +8,9 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";
 import { Bot } from "./Bot";
 import { DEFAULT_PORT } from "./constants";
-import Keyv from "keyv";
+
 config();
 
-export const mongoUrl = "mongodb://localhost:27017/local";
-
-const keyvRoles = new Keyv(`${mongoUrl}`, { namespace: "roles" });
-const keyvUsers = new Keyv(`${mongoUrl}`, { namespace: "users" });
-
-keyvRoles.on("error", (err) => console.error("Keyv connection error:", err));
-keyvUsers.on("error", (err) => console.error("Keyv connection error:", err));
 
 const app = express();
 app.use(express.static(path.join(__dirname, "../", "client/build")));
@@ -49,8 +42,7 @@ const bot = new Bot({
   client,
   rest,
   io,
-  rolesDb: keyvRoles,
-  usersDb: keyvUsers,
+
 });
 
 client.on("ready", async () => {
@@ -83,7 +75,7 @@ client.on("roleCreate", (role) => {
 
 client.on("roleDelete", (role) => {
   bot.permissions.setAdminCommandsPermissions({ guildId: role.guild.id })
-  keyvRoles.delete(role.name);
+  bot.guilds[role.guild.id]?.rolesDb.delete(role.name)
 })
 
 bot.runClient();
