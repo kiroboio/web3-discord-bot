@@ -447,22 +447,6 @@ export class Bot {
 
   private connect = async (interaction: CommandInteraction<CacheType>) => {
     if (!interaction.guildId) return;
-    const userDb = await this.guilds[interaction.guildId]?.usersDb.get(interaction.user.id);
-    if (userDb) {
-      interaction.reply({ content: "Already connected", ephemeral: true });
-      const user = this.users[interaction.user.id];
-      const message = await user?.getVaultMessage({
-        chainId: this.chainId,
-      });
-      if (message && user) {
-        user.sendMessage({
-          embeds: message.embeds,
-          files: message.files,
-          channelId: interaction.channelId,
-        });
-      }
-      return;
-    }
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
       const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
@@ -559,8 +543,10 @@ export class Bot {
 
     if (!interaction.guildId) return;
     await this.guilds[interaction.guildId]?.usersDb.delete(interaction.user.id);
+    const user = this.users[interaction.user.id];
+    user?.removeAllListeners();
+    await this.roles.deleteUserRoles({ userId: interaction.user.id, guildId: interaction.guildId })
 
-    this.users[interaction.user.id]?.removeAllListeners();
     delete this.users[interaction.user.id];
     interaction.reply({ content: "disconnected", ephemeral: true });
   };

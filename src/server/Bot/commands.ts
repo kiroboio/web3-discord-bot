@@ -84,7 +84,7 @@ export const getCommands = ({
 
     new SlashCommandBuilder()
       .setName(Commands.Disconnect)
-      .setDescription("Disconnect from metamask account"),
+      .setDescription("Disconnect from metamask account and remove your Kirobo roles"),
 
     new SlashCommandBuilder()
       .setName(Commands.MyVault)

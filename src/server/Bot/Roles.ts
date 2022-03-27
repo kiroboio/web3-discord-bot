@@ -99,6 +99,29 @@ export class Roles {
     this.updateRoleCommands({ guildId });
   };
 
+  public deleteUserRoles = async ({
+    guildId,
+    userId,
+  }: {
+    guildId: string;
+    userId: string
+  }) => {
+    //await this.guilds[guildId]?.rolesDb.delete(roleName);
+    const guild = this.client.guilds.cache.get(guildId)
+    const member = guild?.members.cache.get(userId);
+
+    if (!member || ! guild) return;
+    for (const role of member.roles.cache.values()) {
+      console.log({ roleName: role.name, roleId: role.id })
+      if (await this.guilds[guildId]?.rolesDb.get(role.name)) {
+        member.roles.remove(role.id);
+      }
+    }
+
+    this.updateRoleCommands({ guildId });
+  };
+
+
   public sendRoles = async (interaction: CommandInteraction<CacheType>) => {
     if (!interaction.guildId) {
       interaction.reply("guild not found");
