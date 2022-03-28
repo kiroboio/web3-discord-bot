@@ -1,13 +1,14 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 
 export enum Commands {
-  Help = 'help',
-  SetChain = 'set-chain',
-  GetChain = 'get-chain',
+  Help = "help",
+  SetChain = "set-chain",
+  GetChain = "get-chain",
   Connect = "connect",
   Disconnect = "disconnect",
   MyVault = "get-my-vault",
-  GetNfts = "get-nfts",
+  GetWalletNfts = "get-wallet-nfts",
+  GetVaultNfts = "get-vault-nfts",
   SendNft = "send-nft",
   GetRoles = "get-roles",
   MyRole = "get-my-role",
@@ -15,8 +16,11 @@ export enum Commands {
   AddRole = "add-role",
 }
 
-export const adminOnlyCommands = [Commands.SetChain, Commands.AddRole, Commands.DeleteRole]
-
+export const adminOnlyCommands = [
+  Commands.SetChain,
+  Commands.AddRole,
+  Commands.DeleteRole,
+];
 
 const colors = [
   "DEFAULT",
@@ -45,13 +49,11 @@ const colors = [
   "RANDOM",
 ] as const;
 
-
 export const getCommands = ({
   roles,
 }: {
   roles: { name: string; value: string; amount: string }[];
 }) => {
-
   const roleChoices = roles.map(
     (role) => [role.name, role.name] as [string, string]
   );
@@ -69,7 +71,10 @@ export const getCommands = ({
         option
           .setName("chain-name")
           .setDescription("Ethereum chain name")
-          .addChoices([["main", "1"], ["rinkeby", "4"]])
+          .addChoices([
+            ["main", "1"],
+            ["rinkeby", "4"],
+          ])
           .setRequired(true)
       )
       .setDefaultPermission(false),
@@ -84,7 +89,9 @@ export const getCommands = ({
 
     new SlashCommandBuilder()
       .setName(Commands.Disconnect)
-      .setDescription("Disconnect from metamask account and remove your Kirobo roles"),
+      .setDescription(
+        "Disconnect from metamask account and remove your Kirobo roles"
+      ),
 
     new SlashCommandBuilder()
       .setName(Commands.MyVault)
@@ -137,9 +144,13 @@ export const getCommands = ({
       )
       .setDefaultPermission(false),
 
-    new SlashCommandBuilder()
-      .setName(Commands.GetNfts)
-      .setDescription("Get nfts data. TBA"),
+    // new SlashCommandBuilder()
+    //   .setName(Commands.GetWalletNfts)
+    //   .setDescription("Get your wallets nfts (4 images max)."),
+
+    // new SlashCommandBuilder()
+    //   .setName(Commands.GetVaultNfts)
+    //   .setDescription("Get your vault nfts (4 images max)."),
 
     // new SlashCommandBuilder()
     //   .setName(Commands.SendNft)

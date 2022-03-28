@@ -6,10 +6,10 @@ import https from "https";
 import fs from "fs";
 import path from "path";
 
-
-type NFT = {
+export type NFT = {
   name: string;
   value: string;
+  type: "base64" | "url";
 };
 
 export class NFTs {
@@ -84,14 +84,12 @@ export class NFTs {
         console.error({ error: e });
       });
 
-    const nfts: NFT[] = res.result
-      .filter((nft: NFT) => !!nft)
-      .concat(res.result_vault.filter((nft: NFT) => !!nft));
-    //if (!nfts.length) return nfts;
-    // this.sendMessageToChannel({
-    //   uris: nfts.map((nft) => nft.value),
-    //   title: "test",
-    // });
+    if(!res.result) return;
+    const nfts: { wallet: NFT[], vault: NFT[] } = { wallet: [], vault: []}
+    
+    nfts.wallet = res.result.filter((nft: NFT) => !!nft)
+    nfts.vault = res.result_vault.filter((nft: NFT) => !!nft)
+
     return nfts;
   };
 
@@ -118,16 +116,25 @@ export class NFTs {
   // };
 
   private transformNft = async (nft: any) => {
+    if(!nft.token_uri) return;
+    
     let token_uri: string | undefined;
-    token_uri = await this.tryGetImage({ url: String(nft.token_uri) });
-    if (token_uri) {
-      return {
-        name: nft.name.trim().split(" ").join("-").toLowerCase(),
-        value: token_uri,
-      };
+    let type: string | undefined
+    const nftUriArray = nft.token_uri.split(",");
+    if (nftUriArray[0] === "data:application/json;base64") {
+      token_uri = JSON.parse(atob(nftUriArray[nftUriArray.length - 1]))?.image;
+      type = "base64"
+    } else {
+      token_uri = await this.tryGetImage({ url: nft.token_uri });
+      type = "url";
     }
 
-    return undefined;
+    if (!token_uri) return;
+    return {
+      name: nft.name.trim().split(" ").join("-").toLowerCase(),
+      value: token_uri,
+      type,
+    };
   };
 
   private ipfsToHttps = (uri: string) => {
