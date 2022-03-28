@@ -24,11 +24,13 @@ import { getCommands, Commands, adminOnlyCommands } from "./commands";
 import { UI } from "./UI";
 import { VAULT_URL, MONGO_URL, BOT_NAME } from "../constants";
 import open from "open";
-import { Web3Subscriber } from "../Web3/Web3Subscriber";
-import { Vault } from "../Web3/Vault";
+import { Web3Subscriber } from "../../Web3/Web3Subscriber";
+import { Vault } from "../../Web3/Vault";
 import { Guild } from "./Guild";
 import Canvas from "canvas";
 import { NFT } from "./User/NFTs";
+import { kiroboAddress } from "../../Web3/Web3Vault";
+import { etherToWei } from "../../Web3/utils";
 
 config();
 
@@ -42,6 +44,7 @@ type IoSocket = Socket<
   any
 >;
 
+export type DbUser = { wallet: string, vault: string }
 export type CommandType = {
   id: string;
   application_id: string;
@@ -140,8 +143,8 @@ export class Bot {
   public static setNftSubCommands = async ({
     values,
     guildId,
-    // withPrevChoices,
-  }: {
+  }: // withPrevChoices,
+  {
     values: {
       name: string;
       value: string;
@@ -366,21 +369,6 @@ export class Bot {
         await this.getMyVault(interaction);
 
         break;
-      // case Commands.GetWalletNfts:
-      //   if (!(await this.isUserExist(interaction))) return;
-      //   await this.getWalletNfts(interaction);
-
-      //   break;
-      // case Commands.GetVaultNfts:
-      //   if (!(await this.isUserExist(interaction))) return;
-      //   await this.getVaultNfts(interaction);
-
-      //   break;
-      // case Commands.SendNft:
-      //   if (!(await this.isUserExist(interaction))) return;
-      //   await this.sendNft(interaction);
-
-      //   break;
       case Commands.AddRole:
         await this.addRole(interaction);
         break;
@@ -393,6 +381,10 @@ export class Bot {
         break;
       case Commands.DeleteRole:
         await this.deleteRole(interaction);
+        break;
+      case Commands.SendKiro:
+        if (!(await this.isUserExist(interaction))) return;
+        await this.sendKiro(interaction);
         break;
     }
   };
@@ -544,11 +536,11 @@ export class Bot {
         components: [connectButton],
       });
     }
-    
+
     const message = await user.getVaultMessage({
       chainId: this.chainId,
     });
-    const nftEmbeds = await this.getNfts({ interaction, type: "Vault"});
+    const nftEmbeds = await this.getNfts({ interaction, type: "Vault" });
 
     return interaction.editReply({
       embeds: message?.embeds.concat(nftEmbeds?.embeds || []),
@@ -653,6 +645,64 @@ export class Bot {
     }
   };
 
+  private sendKiro = async (interaction: CommandInteraction<CacheType>) => {
+    const user = interaction.options.getUser("user-name");
+    if (!user) {
+      return interaction.reply({
+        content: `user not found`,
+        ephemeral: true,
+      });
+    }
+
+    const guildId = interaction.guild?.id;
+    if (!guildId) return interaction.reply({ content: "failed to fetch guild id", ephemeral: true });
+
+    const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
+      interaction.user.id
+    ) as DbUser
+
+    const dbUserTo = await this.guilds[guildId]?.usersDb.get(
+      user.id
+    ) as DbUser
+    if (!dbUserTo) {
+      return interaction.reply({
+        content: `user ${user.username} not connected with his web3 account`,
+        ephemeral: true,
+      });
+    }
+
+    const amount = interaction.options.getInteger("amount");
+    if (!amount)
+      return interaction.reply({ content: "amount required", ephemeral: true });
+
+    const walletType = interaction.options.getString("wallet-type") as
+      | "wallet"
+      | "vault";
+
+    if (!walletType)
+      return interaction.reply({ content: "wallet type required", ephemeral: true });
+
+    interaction.deferReply();
+    switch (walletType) {
+      case "vault":
+        const res = await Vault.sendVaultTokenTransaction({
+          address: dbUserFrom.wallet,
+          addressTo: dbUserTo.wallet,
+          chainId: this.chainId,
+          tokenAddress: kiroboAddress[String(this.chainId) as "1" | "4"],
+          valueInWei: etherToWei(amount),
+          
+        })
+        console.log({ res })
+        interaction.editReply("Sended")
+        break;
+    
+      default:
+        break;
+    }
+
+  };
+
   private getNfts = async ({
     interaction,
     type,
@@ -681,19 +731,18 @@ export class Bot {
       username: interaction.user.username,
     });
 
-    return nftsEmbeds
+    return nftsEmbeds;
   };
 
   private getNftsMessageEmbed = async ({
     nfts,
     type,
-    // username,
-  }: {
+  }: // username,
+  {
     nfts: NFT[];
     type: "Wallet" | "Vault";
     username: string;
   }) => {
-
     const embeds: MessageEmbed[] = [];
     const attachments: MessageAttachment[] = [];
 

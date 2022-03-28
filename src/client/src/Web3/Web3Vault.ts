@@ -4,12 +4,9 @@ import erc20Abi from "./abi/erc20.json";
 import { AbiItem } from "web3-utils";
 import { Contract } from "web3-eth-contract";
 import Web3 from "web3";
-import { config } from "dotenv";
-config();
-
 const RPC_URLS = {
-  "1": `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_KEY}`,
-  "4": `wss://rinkeby.infura.io/ws/v3/${process.env.INFURA_KEY}`,
+  "1": `wss://mainnet.infura.io/ws/v3/14c73ecdbcaa464585aa7c438fdf6a77`,
+  "4": `wss://rinkeby.infura.io/ws/v3/14c73ecdbcaa464585aa7c438fdf6a77`,
 };
 
 const vaultWalletAddress = {
@@ -18,7 +15,7 @@ const vaultWalletAddress = {
   notSupportedChainId: "0xba232b47a7dDFCCc221916cf08Da03a4973D3A1D",
 };
 
-const kiroboAddress = {
+export const kiroboAddress = {
   "1": "0xB1191F691A355b43542Bea9B8847bc73e7Abb137",
   "4": "0xb678e95f83af08e7598ec21533f7585e83272799",
 };
@@ -33,9 +30,9 @@ export class Web3Vault {
   public static getVaultContractFactory = ({ chainId }: { chainId: 1 | 4 }) => {
     try {
       const factoryJsonAbi = FactoryJSON.abi as AbiItem[];
-      const contract = new this.web3[String(chainId)].eth.Contract(
+      const contract = new this.web3[String(chainId) as "1" | "4"].eth.Contract(
         factoryJsonAbi,
-        vaultWalletAddress[String(chainId)]
+        vaultWalletAddress[String(chainId) as "1" | "4"]
       ) as unknown as Contract;
 
       return contract;
@@ -48,9 +45,9 @@ export class Web3Vault {
   public static getKiroboTokenContract = ({ chainId }: { chainId: 1 | 4 }) => {
     const chainIdText = String(chainId);
     const erc20AbiItem = erc20Abi as AbiItem[];
-    const tokenAddress = kiroboAddress[chainIdText];
+    const tokenAddress = kiroboAddress[chainIdText as "1" | "4"];
 
-    const contract = new this.web3[chainIdText].eth.Contract(
+    const contract = new this.web3[chainIdText as "1" | "4"].eth.Contract(
       erc20AbiItem,
       tokenAddress
     ) as unknown as Contract;
@@ -72,7 +69,7 @@ export class Web3Vault {
         .call();
       if (walletAccount && this.isValidAddress(walletAccount)) {
         const walletJsonAbi = WalletJSON.abi as AbiItem[];
-        const contract = new this.web3[String(chainId)].eth.Contract(
+        const contract = new this.web3[String(chainId) as "1" | "4"].eth.Contract(
           walletJsonAbi,
           walletAccount
         ) as unknown as Contract;

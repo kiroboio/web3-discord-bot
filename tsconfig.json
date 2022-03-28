@@ -21,6 +21,6 @@
     "baseUrl": "./",
     "jsx": "react-jsx"
   },
-  "include": ["src/server"],
+  "include": ["src/server", "src/Web3"],
   "exclude": ["node_modules", "dist"]
 }

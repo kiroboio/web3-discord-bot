@@ -1,7 +1,7 @@
 import { Contract } from "web3-eth-contract";
 import { toBN } from "web3-utils";
-import { weiToEther } from "./utils";
-import { Web3Vault } from "./Web3Vault";
+import { etherToWei, weiToEther } from "./utils";
+import { kiroboAddress, Web3Vault } from "./Web3Vault";
 
 export class Vault {
   public static contract: { [key: string]: Contract | undefined } = {};
@@ -16,6 +16,46 @@ export class Vault {
     if (!address) return;
     const contract = await Web3Vault.getVaultContract({ address, chainId });
     this.contract[address] = contract;
+  };
+
+  public static sendKiroTokenTransaction = async ({
+    address,
+    addressTo,
+    chainId,
+    value,
+  }: {
+    address: string;
+    addressTo: string;
+    value: string;
+    chainId: string;
+  }) => {
+    const library = Web3Vault.web3[chainId];
+    const onChainWalletContract = Vault.contract[address];
+
+    if (!library || !onChainWalletContract) return;
+
+    const valueInWei = etherToWei(value);
+
+    const tokenAddress = kiroboAddress[chainId]
+    const gas = toBN(
+      await onChainWalletContract?.methods
+        .transfer20(tokenAddress, addressTo, valueInWei)
+        .estimateGas({ from: address })
+    )
+      .muln(1.2)
+      .toNumber();
+
+    await onChainWalletContract?.methods
+      .transfer20(tokenAddress, addressTo, valueInWei)
+      .send({ from: address, gas })
+      .on("transactionHash", async (txHash: string) => {
+        const receipt = await library?.eth?.getTransactionReceipt(txHash);
+
+        return receipt;
+      })
+      .on("error", (err: Error) => {
+        return err;
+      });
   };
 
   public static getKiroBalance = async ({

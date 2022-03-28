@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 import express from "express";
 import { Socket } from "socket.io";
-import { Vault } from "../../Web3/Vault";
+import { Vault } from "../../../Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";

@@ -1,4 +1,4 @@
-import { Web3Vault } from "../Web3/Web3Vault";
+import { Web3Vault } from "./Web3Vault";
 
 export class Web3Subscriber {
 
