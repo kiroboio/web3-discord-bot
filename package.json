@@ -1,5 +1,5 @@
 {
-  "name": "web3-discord-bot",
+  "name": "web3-kirobo-vault-discord-bot",
   "version": "1.0.0",
   "description": "",
   "main": "./dist/server/index.js",
@@ -41,6 +41,7 @@
     "axios": "^0.26.1",
     "buffer-image": "^1.0.0",
     "bufferutil": "^4.0.6",
+    "canvas": "^2.9.1",
     "discord-api-types": "^0.26.1",
     "discord.js": "^13.6.0",
     "dotenv": "^16.0.0",

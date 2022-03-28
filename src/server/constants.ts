@@ -1,3 +1,4 @@
+export const BOT_NAME = "web3-kirobo-vault";
 export const VAULT_URL = 'https://vault.kirobo.me';
 export const MONGO_URL = "mongodb://localhost:27017/local";
 export const DEFAULT_PORT = 3334;

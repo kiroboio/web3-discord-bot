@@ -139,12 +139,10 @@ export const getCommands = ({
 
     new SlashCommandBuilder()
       .setName(Commands.GetNfts)
-      .setDescription("Get nfts data. TBA")
-      .setDefaultPermission(false),
+      .setDescription("Get nfts data. TBA"),
 
-    new SlashCommandBuilder()
-      .setName(Commands.SendNft)
-      .setDescription("Send nft image. TBA")
-      .setDefaultPermission(false),
+    // new SlashCommandBuilder()
+    //   .setName(Commands.SendNft)
+    //   .setDescription("Send nft image. TBA"),
   ].map((command) => command.toJSON());
 };

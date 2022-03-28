@@ -5,7 +5,7 @@ import stream from "stream";
 import https from "https";
 import fs from "fs";
 import path from "path";
-import { UI } from "../UI";
+
 
 type NFT = {
   name: string;
@@ -87,35 +87,35 @@ export class NFTs {
     const nfts: NFT[] = res.result
       .filter((nft: NFT) => !!nft)
       .concat(res.result_vault.filter((nft: NFT) => !!nft));
-    if (!nfts.length) return nfts;
-    this.sendMessageToChannel({
-      uris: nfts.map((nft) => nft.value),
-      title: "test",
-    });
+    //if (!nfts.length) return nfts;
+    // this.sendMessageToChannel({
+    //   uris: nfts.map((nft) => nft.value),
+    //   title: "test",
+    // });
     return nfts;
   };
 
-  private sendMessageToChannel = ({
-    color = COLORS.primary,
-    uris,
-  }: {
-    color?: ColorResolvable;
-    title?: string;
-    url?: string;
-    description?: string;
-    image?: string;
-    thumbnail?: string;
-    uris?: string[];
-  }) => {
-    const embeds: MessageEmbed[] = [];
-    const user = this.client.users.cache.get(this.userId);
+  // private sendMessageToChannel = ({
+  //   color = COLORS.primary,
+  //   uris,
+  // }: {
+  //   color?: ColorResolvable;
+  //   title?: string;
+  //   url?: string;
+  //   description?: string;
+  //   image?: string;
+  //   thumbnail?: string;
+  //   uris?: string[];
+  // }) => {
+  //   const embeds: MessageEmbed[] = [];
+  //   const user = this.client.users.cache.get(this.userId);
 
-    uris?.map((uri) => {
-      embeds.push(UI.getMessageEmbedWith({ thumbnail: uri, color }));
-    });
+  //   uris?.map((uri) => {
+  //     embeds.push(UI.getMessageEmbedWith({ thumbnail: uri, color }));
+  //   });
 
-    user?.send({ embeds, options: {} });
-  };
+  //   user?.send({ embeds, options: {} });
+  // };
 
   private transformNft = async (nft: any) => {
     let token_uri: string | undefined;

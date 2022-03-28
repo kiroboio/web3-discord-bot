@@ -6,6 +6,7 @@ import {
   EmbedField,
   TextChannel,
   Permissions as DiscordPermissions,
+  MessageAttachment,
 } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
@@ -20,11 +21,13 @@ import { Roles } from "./Roles";
 import { Permissions } from "./Permissions";
 import { getCommands, Commands, adminOnlyCommands } from "./commands";
 import { UI } from "./UI";
-import { VAULT_URL, MONGO_URL } from "../constants";
+import { VAULT_URL, MONGO_URL, BOT_NAME } from "../constants";
 import open from "open";
 import { Web3Subscriber } from "../Web3/Web3Subscriber";
 import { Vault } from "../Web3/Vault";
 import { Guild } from "./Guild";
+import Canvas from "canvas";
+import path from "path";
 
 config();
 
@@ -107,11 +110,10 @@ export class Bot {
 
     if (!command) return;
 
-
     const prevChoices = withPrevChoices
       ? command.options[0]?.choices?.map(
-        (choice) => [choice.name, choice.value] as [string, string]
-      )
+          (choice) => [choice.name, choice.value] as [string, string]
+        )
       : [];
     const currentChoices = values.map(
       (choice) => [choice.name, choice.value] as [string, string]
@@ -136,21 +138,23 @@ export class Bot {
 
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
     const users = this.client.users.cache.values();
-    await Promise.all(guilds.map(async (guildId) => {
-      for (const user of users) {
-        const dbUser = (await this.guilds[guildId]?.usersDb.get(user.id)) as
-          | { wallet: string; vault?: string }
-          | undefined;
-        if (!dbUser) continue;
+    await Promise.all(
+      guilds.map(async (guildId) => {
+        for (const user of users) {
+          const dbUser = (await this.guilds[guildId]?.usersDb.get(user.id)) as
+            | { wallet: string; vault?: string }
+            | undefined;
+          if (!dbUser) continue;
 
-        this.createUser({
-          userId: user.id,
-          guildId,
-          address: dbUser.wallet,
-          vaultAddress: dbUser.vault,
-        });
-      }
-    }));
+          this.createUser({
+            userId: user.id,
+            guildId,
+            address: dbUser.wallet,
+            vaultAddress: dbUser.vault,
+          });
+        }
+      })
+    );
   };
 
   public setGuildsBotChannel = ({ guilds }: { guilds: string[] }) => {
@@ -164,13 +168,13 @@ export class Bot {
     if (!guild) return;
 
     for (const channel of guild.channels.cache.values()) {
-      if (channel.name === "web3-kirobo-config") {
+      if (channel.name === `${BOT_NAME}-config`) {
         await channel.delete();
       }
     }
     const channel = await guild.channels
-      .create("web3-kirobo-config", {
-        reason: "Config for web3-kirobo-bot",
+      .create(`${BOT_NAME}-config`, {
+        reason: `Config for ${BOT_NAME}`,
       })
       .catch(console.error);
 
@@ -197,7 +201,7 @@ export class Bot {
       label: "Connect",
       customId: "connect",
       secondLabel: "Help",
-      secondCustomId: 'help'
+      secondCustomId: "help",
     });
 
     guildChannel
@@ -214,30 +218,31 @@ export class Bot {
   };
 
   public setGuild = (guildId: string) => {
-    const keyvRoles = new Keyv(`${MONGO_URL}`, { namespace: `guild:${guildId}:roles` });
-    const keyvUsers = new Keyv(`${MONGO_URL}`, { namespace: `guild:${guildId}:users` });
+    const keyvRoles = new Keyv(`${MONGO_URL}`, {
+      namespace: `guild:${guildId}:roles`,
+    });
+    const keyvUsers = new Keyv(`${MONGO_URL}`, {
+      namespace: `guild:${guildId}:users`,
+    });
 
     const newGuild = new Guild({
       usersDb: keyvUsers,
       rolesDb: keyvRoles,
-      guildId
-    })
+      guildId,
+    });
     this.guilds[guildId] = newGuild;
     this.roles.guilds[guildId] = newGuild;
-
-  }
+  };
 
   public deleteGuild = (guildId: string) => {
-    const guild = this.guilds[guildId]
+    const guild = this.guilds[guildId];
 
     guild?.rolesDb.clear();
     guild?.usersDb.clear();
 
     delete this.guilds[guildId];
     delete this.roles.guilds[guildId];
-
-  }
-
+  };
 
   public setCommands = async ({ guilds }: { guilds: string[] }) => {
     return Promise.all(guilds.map(this.setCommand));
@@ -247,7 +252,6 @@ export class Bot {
     const roles = await this.roles.getRoles({ guildId });
     this.client.emojis.cache.values();
     const commands = getCommands({ roles });
-
 
     await Bot.rest
       .put(Routes.applicationGuildCommands(clientId, guildId), {
@@ -341,8 +345,10 @@ export class Bot {
   };
 
   private isUserExist = async (interaction: CommandInteraction<CacheType>) => {
-    if (!interaction.guildId) return
-    const user = await this.guilds[interaction.guildId]?.usersDb.get(interaction.user.id);
+    if (!interaction.guildId) return;
+    const user = await this.guilds[interaction.guildId]?.usersDb.get(
+      interaction.user.id
+    );
     if (!user) {
       const connectButton = UI.getButton({
         label: "Connect",
@@ -363,22 +369,30 @@ export class Bot {
     if (!interaction.guildId) return;
     const roles = await this.roles.getRoles({ guildId: interaction.guildId });
     this.client.emojis.cache.values();
-    const commands = getCommands({ roles })
+    const commands = getCommands({ roles });
 
-    const member = this.client.guilds.cache.get(interaction.guildId)?.members.cache.get(interaction.user.id)
+    const member = this.client.guilds.cache
+      .get(interaction.guildId)
+      ?.members.cache.get(interaction.user.id);
 
-    const isRoleManager = member?.permissions?.has(DiscordPermissions.FLAGS.MANAGE_ROLES);
+    const isRoleManager = member?.permissions?.has(
+      DiscordPermissions.FLAGS.MANAGE_ROLES
+    );
 
     const fields: EmbedField[] = [];
     commands.forEach((command) => {
-      if (!isRoleManager && adminOnlyCommands.includes(command.name as Commands)) return
+      if (
+        !isRoleManager &&
+        adminOnlyCommands.includes(command.name as Commands)
+      )
+        return;
       fields.push({
         name: `/${command.name}`,
         // @ts-expect-error: description exists
         value: command?.description,
-        inline: false
-      })
-    })
+        inline: false,
+      });
+    });
 
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
     const logoAttachment = UI.getMessageImageAttachment({
@@ -394,13 +408,12 @@ export class Bot {
       },
     });
 
-    interaction
-      .reply({
-        embeds: [connectMessage],
-        files: [attachment, logoAttachment],
-        ephemeral: true,
-      })
-  }
+    interaction.reply({
+      embeds: [connectMessage],
+      files: [attachment, logoAttachment],
+      ephemeral: true,
+    });
+  };
 
   private getChainReply = ({ chainId }: { chainId: string | null }) => {
     const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
@@ -418,29 +431,28 @@ export class Bot {
       },
     });
 
-    return ({
+    return {
       embeds: [connectMessage],
       files: [attachment, logoAttachment],
       ephemeral: true,
-    })
-  }
+    };
+  };
 
   private getChain = async (interaction: CommandInteraction<CacheType>) => {
-    interaction
-      .reply(this.getChainReply({ chainId: String(this.chainId) }))
-  }
+    interaction.reply(this.getChainReply({ chainId: String(this.chainId) }));
+  };
 
   private setChain = async (interaction: CommandInteraction<CacheType>) => {
-    const chainId: "1" | "4" | null = interaction.options.getString("chain-name") as "1" | "4" | null;
+    const chainId: "1" | "4" | null = interaction.options.getString(
+      "chain-name"
+    ) as "1" | "4" | null;
 
-    this.chainId = chainId ? Number(chainId) as 1 | 4 : 1;
+    this.chainId = chainId ? (Number(chainId) as 1 | 4) : 1;
 
     await this.handleChainChange();
 
-    interaction
-      .reply(this.getChainReply({ chainId }))
-
-  }
+    interaction.reply(this.getChainReply({ chainId }));
+  };
 
   private connect = async (interaction: CommandInteraction<CacheType>) => {
     if (!interaction.guildId) return;
@@ -467,6 +479,7 @@ export class Bot {
   };
 
   private getMyVault = async (interaction: CommandInteraction<CacheType>) => {
+    console.log({ users: this.users })
     const user = this.users[interaction.user.id];
     if (!user) {
       const connectButton = UI.getButton({
@@ -481,7 +494,7 @@ export class Bot {
     }
 
     const message = await user.getVaultMessage({
-      chainId: this.chainId
+      chainId: this.chainId,
     });
 
     return interaction.reply({
@@ -526,7 +539,10 @@ export class Bot {
     await this.guilds[interaction.guildId]?.usersDb.delete(interaction.user.id);
     const user = this.users[interaction.user.id];
     user?.removeAllListeners();
-    await this.roles.deleteUserRoles({ userId: interaction.user.id, guildId: interaction.guildId })
+    await this.roles.deleteUserRoles({
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
 
     delete this.users[interaction.user.id];
     interaction.reply({ content: "disconnected", ephemeral: true });
@@ -537,8 +553,13 @@ export class Bot {
     const color = interaction.options.getString("color") as ColorResolvable;
     const emoji = interaction.options.getString("emoji");
 
-    if (!roleName) return interaction.reply({ content: "role name required", ephemeral: true });
-    if (!amount) return interaction.reply({ content: "amount required", ephemeral: true });
+    if (!roleName)
+      return interaction.reply({
+        content: "role name required",
+        ephemeral: true,
+      });
+    if (!amount)
+      return interaction.reply({ content: "amount required", ephemeral: true });
 
     const guildId = interaction.guild?.id;
     if (!guildId) return interaction.reply("failed to fetch guild id");
@@ -559,10 +580,18 @@ export class Bot {
   private deleteRole = async (interaction: CommandInteraction<CacheType>) => {
     const roleName = interaction.options.getString("role-name");
 
-    if (!roleName) return interaction.reply({ content: "role name required", ephemeral: true });
+    if (!roleName)
+      return interaction.reply({
+        content: "role name required",
+        ephemeral: true,
+      });
 
     const guildId = interaction.guild?.id;
-    if (!guildId) return interaction.reply({ content: "failed to fetch guild id", ephemeral: true });
+    if (!guildId)
+      return interaction.reply({
+        content: "failed to fetch guild id",
+        ephemeral: true,
+      });
     try {
       await this.roles.deleteRole({ roleName, guildId });
       return interaction.reply({ content: "deleted", ephemeral: true });
@@ -578,22 +607,73 @@ export class Bot {
     }
 
     await interaction.deferReply();
-    const nfts = await user?.getNfts({ chain: this.chainId === 1 ? "eth" : "rinkeby" });
+    const nfts = await user?.getNfts({
+      chain: this.chainId === 1 ? "eth" : "rinkeby",
+    });
 
     if (!nfts || !nfts.length) {
       interaction.editReply({ content: "not found" });
       return;
     }
 
-    Bot.setSubCommands({
-      commandName: "send-nft",
-      values: nfts,
-      guildId: interaction?.guild?.id || "",
-      subCommandName: "nft",
-      withPrevChoices: true,
+    // Bot.setSubCommands({
+    //   commandName: "send-nft",
+    //   values: nfts,
+    //   guildId: interaction?.guild?.id || "",
+    //   subCommandName: "nft",
+    //   withPrevChoices: true,
+    // });
+
+    const nftImageSize = 150;
+    const margin = 16;
+    const canvas = Canvas.createCanvas(
+      (nftImageSize + margin) * nfts.length + margin,
+      (nftImageSize + margin) * Math.ceil(nfts.length / 3) + margin
+    );
+    const context = canvas.getContext("2d");
+
+    const pathToImages = path.join(__dirname, "../../", "images");
+    const background = await Canvas.loadImage(`${pathToImages}/canvas.jpg`);
+
+    // This uses the canvas dimensions to stretch the image onto the entire canvas
+    context.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < nfts.length; i++) {
+      const nftImage = await Canvas.loadImage(nfts[i].value);
+      const nativeWidth = nftImage.width;
+      const nativeHeight = nftImage.height;
+      const heightIndex = Math.floor(i / 3);
+
+      let width = nftImageSize
+      let height = nftImageSize;
+      if(nativeWidth > nativeHeight) {
+        height = nftImageSize * nativeHeight / nativeWidth
+      }
+      if(nativeWidth < nativeHeight) {
+        width = nftImageSize * nativeWidth / nativeHeight
+      }
+      context.drawImage(
+        nftImage,
+        nftImageSize * i + margin * (i + 1),
+        nftImageSize * heightIndex + margin * (heightIndex + 1),
+        width,
+        height
+      );
+    }
+
+    const attachment = new MessageAttachment(
+      canvas.toBuffer(),
+      "profile-image.png"
+    );
+
+    const connectMessage = UI.getMessageEmbedWith({
+      image: "attachment://profile-image.png",
     });
 
-    return interaction.editReply({ content: "succeed" });
+    return interaction.editReply({
+      embeds: [connectMessage],
+      files: [attachment],
+    });
   };
 
   private sendNft = (interaction: CommandInteraction<CacheType>) => {
@@ -629,7 +709,11 @@ export class Bot {
         guildId,
       });
 
-      user?.startAccountListener({ socket, channelId: interaction.channelId, chainId: this.chainId });
+      user?.startAccountListener({
+        socket,
+        channelId: interaction.channelId,
+        chainId: this.chainId,
+      });
     };
     setTimeout(() => {
       token.token = "";
@@ -666,19 +750,19 @@ export class Bot {
     return user;
   };
 
-
   public handleChainChange = async () => {
-
     for (const user of Object.values(this.users)) {
       if (!user) continue;
 
       const address = user.getAddress();
       if (!address) continue;
 
-
-      user.handleAccountChange({ account: address, userId: user.getUserId(), chainId: Number(this.chainId) as 1 | 4 });
+      user.handleAccountChange({
+        account: address,
+        userId: user.getUserId(),
+        chainId: Number(this.chainId) as 1 | 4,
+      });
     }
-
   };
 
   private subscribeUsers = () => {
