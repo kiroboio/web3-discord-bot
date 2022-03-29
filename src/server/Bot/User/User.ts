@@ -103,22 +103,46 @@ export class User extends NFTs {
     socket.on("disconnect", () => {
       this.socket = null;
     });
+
+    socket.on(
+      "transactionSendSuccess",
+      ({ trxHash, channelId }: { trxHash: string; channelId: string }) => {
+        console.log({ trxHash, chainId })
+        const channel = this.client.channels.cache.get(channelId) as TextChannel
+
+        const embed = UI.getMessageEmbedWith({ title:`:tada: Transaction sent successfully`, fields: [{ name: 'Hash', value: trxHash }] })
+        channel?.send({ embeds: [embed] });
+      }
+    );
+
+    socket.on(
+      "transactionSendFailed",
+      ({ error, channelId }: { error: string; channelId: string }) => {
+        const channel = this.client.channels.cache.get(channelId) as TextChannel
+
+        const embed = UI.getMessageEmbedWith({ title:`:face_with_symbols_over_mouth: Transaction failed`, fields: [{ name: 'Error', value: error }] })
+        channel?.send({ embeds: [embed] });
+      }
+    );
   };
 
   public emitSendKiro = ({
     addressTo,
     chainId,
     amount,
+    channelId,
   }: {
     chainId: string;
     amount: string;
     addressTo: string;
+    channelId: string;
   }) => {
     if (!this.socket) return false;
     this.socket.emit("sendKiro", {
       addressTo,
       chainId,
       amount,
+      channelId,
     });
     return true;
   };

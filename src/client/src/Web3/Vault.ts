@@ -23,11 +23,15 @@ export class Vault {
     addressTo,
     chainId,
     value,
+    resolve,
+    reject,
   }: {
     address: string;
     addressTo: string;
     value: string;
     chainId: string;
+    resolve: (trxHash: string) => void;
+    reject: (error: string) => void;
   }) => {
     const library = await Web3Vault.web3;
     const onChainWalletContract = Vault.contract[address];
@@ -36,7 +40,7 @@ export class Vault {
 
     const valueInWei = etherToWei(value);
 
-    const tokenAddress = kiroboAddress[chainId as "1" | "4"]
+    const tokenAddress = kiroboAddress[chainId as "1" | "4"];
     const gas = toBN(
       await onChainWalletContract?.methods
         .transfer20(tokenAddress, addressTo, valueInWei)
@@ -44,18 +48,24 @@ export class Vault {
     )
       .muln(1.2)
       .toNumber();
-
+    const trx: { hash: string | undefined } = { hash: undefined };
     await onChainWalletContract?.methods
       .transfer20(tokenAddress, addressTo, valueInWei)
       .send({ from: address, gas })
       .on("transactionHash", async (txHash: string) => {
-        const receipt = await library?.eth?.getTransactionReceipt(txHash);
-
-        return receipt;
+        trx.hash = txHash;
       })
       .on("error", (err: Error) => {
-        return err;
+        reject(err.message);
       });
+    
+    console.log({ trxHash: trx.hash })
+    if(!trx.hash) return  reject("failed");
+    const receipt = await library?.eth?.getTransactionReceipt(trx.hash);
+    if (receipt) {
+      resolve(receipt.transactionHash);
+    }
+    console.log({ receipt }, "resolved");
   };
 
   public static getKiroBalance = async ({

@@ -78,7 +78,6 @@ export class Web3Vault {
 
         return contract;
       } else {
-        console.error("vault wallet not found");
         return undefined;
       }
     } catch (err) {

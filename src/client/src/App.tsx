@@ -9,6 +9,7 @@ type SendKiroParams = {
   addressTo: string;
   chainId: string;
   amount: string;
+  channelId: string;
 };
 
 const App = () => {
@@ -49,13 +50,21 @@ const App = () => {
         addressTo: sendKiroParams.addressTo,
         chainId: sendKiroParams.chainId,
         value: sendKiroParams.amount,
+        resolve: (trxHash) => {
+          if(!socket) return
+          socket.emit("transactionSendSuccess", { trxHash, channelId: sendKiroParams.channelId })
+        },
+        reject: (error) => {
+          if(!socket) return
+          socket.emit("transactionSendFailed", { error, channelId: sendKiroParams.channelId })
+        },
       });
       setSendKiroParams(undefined);
       console.log({ res });
     };
 
     sendKiroAsync();
-  }, [sendKiroParams, account]);
+  }, [sendKiroParams, account, socket]);
 
   useEffect(() => {
     if (!tokenParam) return;

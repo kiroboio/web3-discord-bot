@@ -651,6 +651,7 @@ export class Bot {
           addressTo: userToAddress,
           amount: String(amount),
           chainId: String(this.chainId),
+          channelId: interaction.channelId,
         });
 
         if (!res) {
@@ -665,10 +666,14 @@ export class Bot {
             addressTo: userToAddress,
             addressFrom: dbUserFrom.vault,
           });
+          
           if (reply)  {
             interaction.channel?.send(`${userTo.toString()}`);
             return interaction.reply(reply);
+
           }
+
+          
           return interaction.reply("failed =(");
         }
         break;
