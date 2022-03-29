@@ -23,7 +23,7 @@ export class UI {
     thumbnail,
     author,
     footer,
-    fields
+    fields,
   }: {
     color?: ColorResolvable;
     title?: string;
@@ -59,12 +59,12 @@ export class UI {
       embed.setThumbnail(thumbnail);
     }
 
-    if(footer) {
+    if (footer) {
       embed.setFooter(footer);
     }
 
-    if(fields) {
-      embed.addFields(fields)
+    if (fields) {
+      embed.addFields(fields);
     }
 
     return embed;
@@ -79,10 +79,27 @@ export class UI {
     customId: string;
     style?: MessageButtonStyleResolvable;
   }) => {
-    return new MessageActionRow().addComponents(
-      new MessageButton().setCustomId(customId).setLabel(label).setStyle(style)
-    )
+    const button = new MessageButton().setLabel(label).setStyle(style);
+
+    if (customId) button.setCustomId(customId);
+
+
+    return new MessageActionRow().addComponents(button);
   };
+
+  public static getUrlButton = ({
+    label,
+    style = "PRIMARY",
+    url,
+  }: {
+    label: string;
+    url: string;
+    style?: MessageButtonStyleResolvable;
+  }) => {
+    const button = new MessageButton().setLabel(label).setStyle(style).setURL(url)
+    return new MessageActionRow().addComponents(button);
+  };
+
 
   public static getButtonsRow = ({
     label,
@@ -99,11 +116,14 @@ export class UI {
     style?: MessageButtonStyleResolvable;
     secondStyle?: MessageButtonStyleResolvable;
   }) => {
-    return new MessageActionRow().addComponents(
-      [new MessageButton().setCustomId(customId).setLabel(label).setStyle(style), new MessageButton().setCustomId(secondCustomId).setLabel(secondLabel).setStyle(secondStyle)]
-    )
+    return new MessageActionRow().addComponents([
+      new MessageButton().setCustomId(customId).setLabel(label).setStyle(style),
+      new MessageButton()
+        .setCustomId(secondCustomId)
+        .setLabel(secondLabel)
+        .setStyle(secondStyle),
+    ]);
   };
-
 
   public static getMessageImageAttachment = ({
     imageName,
@@ -141,27 +161,15 @@ export class UI {
     return desktopLink;
   };
 
-  public static getConnectReply = ({
-    token,
-    presence,
-    userId,
-  }: {
-    presence: Presence | undefined;
-    token: string;
-    userId: string;
-  }) => {
-    const url = this.getConnectUrl({ token, presence, userId });
-
-    const embededLink = new MessageEmbed()
-      .setColor("#0099ff")
-      .setTitle("Connect")
-      .setURL(url)
-      .setDescription(`Connect to metamask account`);
+  public static getConnectReply = () => {
+    const embed = new MessageEmbed().setTitle(
+      `Connect to metamask account`
+    );
 
     return {
-      embeds: [embededLink],
+      embeds: [embed],
       ephemeral: true,
+      components: [this.getButton({ customId: "connect", label: "Connect" })],
     };
   };
-
 }
