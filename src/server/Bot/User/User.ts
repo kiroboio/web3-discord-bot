@@ -13,7 +13,7 @@ import { Vault } from "../../../Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";
-import { COLORS, VAULT_URL } from "../../constants";
+import { COLORS, URL, VAULT_URL } from "../../constants";
 
 import { UI } from "../UI";
 import Keyv from "keyv";
@@ -110,9 +110,9 @@ export class User extends NFTs {
     chainId,
     amount,
   }: {
-    addressTo: string;
     chainId: string;
     amount: string;
+    addressTo: string;
   }) => {
     if (!this.socket) return false;
     this.socket.emit("sendKiro", {
@@ -262,6 +262,61 @@ export class User extends NFTs {
           name: "Vault Kiro Balance",
           value: balance.vault || "0",
           inline: true,
+        },
+      ],
+    });
+  };
+
+  public getSendTrxMessage = async ({
+    chainId,
+    symbol,
+    userToId,
+    amount,
+    addressFrom,
+    addressTo,
+  }: {
+    chainId: 1 | 4;
+    symbol: string;
+    userToId: string;
+    amount: string;
+    addressFrom: string;
+    addressTo: string;
+  }) => {
+    const attachment = UI.getMessageImageAttachment({ imageName: "vault" });
+    const logoAttachment = UI.getMessageImageAttachment({
+      imageName: "kirogo",
+    });
+
+    if (!this.address) return;
+
+    const userName = this.client.users.cache.get(this.userId)?.username;
+    const userToName = this.client.users.cache.get(userToId)?.username;
+    return this.getMessageToUserEmbeds({
+      title: `Sending ${symbol}`,
+      url: URL,
+      thumbnail: "attachment://vault.png",
+      footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
+      files: [attachment, logoAttachment],
+      fields: [
+        {
+          name: "Chain",
+          value: chainId === 1 ? "Main" : "Rinkeby",
+          inline: false,
+        },
+        {
+          name: `From ${userName}`,
+          value: addressFrom,
+          inline: false,
+        },
+        {
+          name: `To ${userToName}`,
+          value: addressTo,
+          inline: false,
+        },
+        {
+          name: `Amount`,
+          value: `${amount} ${symbol}`,
+          inline: false,
         },
       ],
     });

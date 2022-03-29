@@ -138,53 +138,6 @@ export class Bot {
       .catch(console.error);
   };
 
-  public static setNftSubCommands = async ({
-    values,
-    guildId,
-  }: // withPrevChoices,
-  {
-    values: {
-      name: string;
-      value: string;
-    }[];
-    guildId: string;
-    withPrevChoices: boolean;
-  }) => {
-    const commands: CommandType[] = (await Bot.rest.get(
-      Routes.applicationGuildCommands(clientId, guildId)
-    )) as CommandType[];
-    const command = commands.find(
-      (command) => command.name === Commands.SendNft
-    );
-
-    if (!command) return;
-
-    // const prevChoices = withPrevChoices
-    //   ? command.options[0]?.choices?.map(
-    //       (choice) => [choice.name, choice.value] as [string, string]
-    //     )
-    //   : [];
-    const currentChoices = values.map(
-      (choice) => [choice.name, choice.name] as [string, string]
-    );
-    const cc = new SlashCommandBuilder()
-      .setName(command.name)
-      .setDescription(command.description)
-      .addStringOption((option) =>
-        option
-          .setName("nft")
-          .setDescription("send nft")
-          //.addChoices(prevChoices ? prevChoices : [])
-          .addChoices(currentChoices)
-      );
-    Bot.rest
-      .patch(Routes.applicationGuildCommand(clientId, guildId, command.id), {
-        body: cc.toJSON(),
-      })
-      .then(() => console.log("Successfully registered application commands."))
-      .catch(console.error);
-  };
-
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
     const users = this.client.users.cache.values();
     await Promise.all(
@@ -636,8 +589,8 @@ export class Bot {
   };
 
   private sendKiro = async (interaction: CommandInteraction<CacheType>) => {
-    const user = interaction.options.getUser("user-name");
-    if (!user) {
+    const userTo = interaction.options.getUser("user-name");
+    if (!userTo) {
       return interaction.reply({
         content: `user not found`,
         ephemeral: true,
@@ -651,16 +604,15 @@ export class Bot {
         ephemeral: true,
       });
 
-    // const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
-    //   interaction.user.id
-    // ) as DbUser
-
+    const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
+      interaction.user.id
+    ) as DbUser
     const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
-      user.id
+      userTo.id
     )) as DbUser;
     if (!dbUserTo) {
       return interaction.reply({
-        content: `user ${user.username} not connected with web3 account`,
+        content: `user ${userTo.username} not connected with web3 account`,
         ephemeral: true,
       });
     }
@@ -669,28 +621,52 @@ export class Bot {
     if (!amount)
       return interaction.reply({ content: "amount required", ephemeral: true });
 
-    const walletType = interaction.options.getString("wallet-type") as
+    const fromWalletType = interaction.options.getString("from-wallet-type") as
       | "wallet"
       | "vault";
 
-    if (!walletType)
+    const toWalletType = interaction.options.getString("to-wallet-type") as
+      | "wallet"
+      | "vault";
+
+    if (!fromWalletType || !toWalletType)
       return interaction.reply({
         content: "wallet type required",
         ephemeral: true,
       });
 
-    switch (walletType) {
+    const user = this.users[interaction.user.id];
+    switch (fromWalletType) {
       case "vault":
-        const res = this.users[interaction.user.id]?.emitSendKiro({
-          addressTo: dbUserTo.wallet,
+        if (!dbUserFrom.vault) {
+          return interaction.reply("Vault not found");
+        }
+
+        const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
+        if(!userToAddress) {
+          return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
+        }
+
+        const res = user?.emitSendKiro({
+          addressTo: userToAddress,
           amount: String(amount),
           chainId: String(this.chainId),
         });
+
         if (!res) {
           this.connect(interaction);
         } else {
           console.log({ res });
-          interaction.reply("Confirm sending with your metamask");
+          const reply = await user?.getSendTrxMessage({
+            userToId: userTo.id,
+            symbol: "KIRO",
+            chainId: this.chainId,
+            amount: String(amount),
+            addressTo: userToAddress,
+            addressFrom: dbUserFrom.vault,
+          });
+          if (reply) return interaction.reply(reply);
+          return interaction.reply("failed =(");
         }
         break;
 
@@ -747,7 +723,7 @@ export class Bot {
     });
 
     attachments.push(logoAttachment);
-    const max = nfts.length < 4 ? nfts.length : 4
+    const max = nfts.length < 4 ? nfts.length : 4;
     for (let i = 0; i < max; i++) {
       if (nfts[i].type === "base64") {
         const canvas = await this.getNftCanvas(nfts[i]);

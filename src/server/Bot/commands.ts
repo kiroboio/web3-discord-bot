@@ -151,8 +151,15 @@ export const getCommands = ({
       .setDescription("Send Kiro")
       .addStringOption((option) =>
         option
-          .setName("wallet-type")
+          .setName("from-wallet-type")
           .setDescription("Wallet to send from")
+          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .setRequired(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("to-wallet-type")
+          .setDescription("Wallet to send to")
           .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
           .setRequired(true),
       )
