@@ -514,7 +514,7 @@ export class Bot {
   };
 
   private getMyVault = async (interaction: CommandInteraction<CacheType>) => {
-    interaction.deferReply();
+    await interaction.deferReply();
     const user = this.users[interaction.user.id];
     if (!user) {
       const connectButton = UI.getButton({
@@ -747,7 +747,8 @@ export class Bot {
     });
 
     attachments.push(logoAttachment);
-    for (let i = 0; i < nfts.length; i++) {
+    const max = nfts.length < 4 ? nfts.length : 4
+    for (let i = 0; i < max; i++) {
       if (nfts[i].type === "base64") {
         const canvas = await this.getNftCanvas(nfts[i]);
         const nftFileName = nfts[i].name + i + type;
