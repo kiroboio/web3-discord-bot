@@ -318,7 +318,6 @@ export class Bot {
       case Commands.MyVault:
         if (!(await this.isUserExist(interaction))) return;
         await this.getMyVault(interaction);
-
         break;
       case Commands.AddRole:
         await this.addRole(interaction);
@@ -636,12 +635,12 @@ export class Bot {
         ephemeral: true,
       });
 
-    switch (fromWalletType) {
-      case "vault":
+
         if (!dbUserFrom.vault) {
           return interaction.reply("Vault not found");
         }
 
+        const userFromAddress = fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet
         const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
         if(!userToAddress) {
           return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
@@ -652,35 +651,36 @@ export class Bot {
           amount: String(amount),
           chainId: String(this.chainId),
           channelId: interaction.channelId,
+          type: fromWalletType,
         });
 
         if (!res) {
-          this.connect(interaction);
+          return this.connect(interaction);
+          
         } else {
-          console.log({ res });
           const reply = await user?.getSendTrxMessage({
             userToId: userTo.id,
             symbol: "KIRO",
             chainId: this.chainId,
             amount: String(amount),
             addressTo: userToAddress,
-            addressFrom: dbUserFrom.vault,
+            addressFrom: userFromAddress,
           });
           
           if (reply)  {
             interaction.channel?.send(`${userTo.toString()}`);
             return interaction.reply(reply);
-
+            
           }
 
           
           return interaction.reply("failed =(");
+          
         }
-        break;
 
-      default:
-        break;
-    }
+
+     
+    
   };
 
   private getNfts = async ({
@@ -701,7 +701,6 @@ export class Bot {
     });
 
     if (!nfts || (!nfts.wallet.length && !nfts.vault.length)) {
-      interaction.editReply({ content: "not found" });
       return;
     }
 

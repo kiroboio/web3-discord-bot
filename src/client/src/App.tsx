@@ -10,6 +10,7 @@ type SendKiroParams = {
   chainId: string;
   amount: string;
   channelId: string;
+  type: "wallet" | "vault";
 };
 
 const App = () => {
@@ -35,7 +36,6 @@ const App = () => {
 
   const isSendingKiro = account && addressTo && chainId && amount;
 
-  console.log({ sendKiroParams });
   useEffect(() => {
     if (!sendKiroParams) return;
     if (!account) return;
@@ -45,22 +45,37 @@ const App = () => {
         address: account,
         chainId: Number(sendKiroParams.chainId) as 1 | 4,
       });
-      const res = await Vault.sendKiroTokenTransaction({
+
+      const params = {
         address: account,
         addressTo: sendKiroParams.addressTo,
         chainId: sendKiroParams.chainId,
         value: sendKiroParams.amount,
-        resolve: (trxHash) => {
-          if(!socket) return
-          socket.emit("transactionSendSuccess", { trxHash, channelId: sendKiroParams.channelId })
+        resolve: (trxHash: string) => {
+          if (!socket) return;
+          socket.emit("transactionSendSuccess", {
+            trxHash,
+            channelId: sendKiroParams.channelId,
+          });
         },
-        reject: (error) => {
-          if(!socket) return
-          socket.emit("transactionSendFailed", { error, channelId: sendKiroParams.channelId })
+        reject: (error: string) => {
+          if (!socket) return;
+          socket.emit("transactionSendFailed", {
+            error,
+            channelId: sendKiroParams.channelId,
+          });
         },
-      });
+      }
+      switch (sendKiroParams.type) {
+        case "vault":
+          await Vault.sendVaultKiroTransaction(params);
+          break;
+
+        case "wallet":
+          await Vault.sendWalletKiroTransaction(params);
+          break;
+      }
       setSendKiroParams(undefined);
-      console.log({ res });
     };
 
     sendKiroAsync();
