@@ -29,8 +29,6 @@ import { Vault } from "../../Web3/Vault";
 import { Guild } from "./Guild";
 import Canvas from "canvas";
 import { NFT } from "./User/NFTs";
-import { kiroboAddress } from "../../Web3/Web3Vault";
-import { etherToWei } from "../../Web3/utils";
 
 config();
 
@@ -657,9 +655,9 @@ export class Bot {
     const guildId = interaction.guild?.id;
     if (!guildId) return interaction.reply({ content: "failed to fetch guild id", ephemeral: true });
 
-    const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
-      interaction.user.id
-    ) as DbUser
+    // const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
+    //   interaction.user.id
+    // ) as DbUser
 
     const dbUserTo = await this.guilds[guildId]?.usersDb.get(
       user.id
@@ -682,19 +680,14 @@ export class Bot {
     if (!walletType)
       return interaction.reply({ content: "wallet type required", ephemeral: true });
 
-    interaction.deferReply();
+    // interaction.deferReply();
+    const member = interaction.guild?.members.cache.get(interaction.user.id);
+    const presence = member?.guild.presences.cache.get(interaction.user.id);
     switch (walletType) {
       case "vault":
-        const res = await Vault.sendVaultTokenTransaction({
-          address: dbUserFrom.wallet,
-          addressTo: dbUserTo.wallet,
-          chainId: this.chainId,
-          tokenAddress: kiroboAddress[String(this.chainId) as "1" | "4"],
-          valueInWei: etherToWei(amount),
-          
-        })
+        const res = UI.getSendKiroReply({ presence, addressTo: dbUserTo.wallet, amount: String(amount), chainId: String(this.chainId)  })
         console.log({ res })
-        interaction.editReply("Sended")
+        interaction.reply(res)
         break;
     
       default:

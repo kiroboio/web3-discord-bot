@@ -163,4 +163,54 @@ export class UI {
       ephemeral: true,
     };
   };
+
+  public static getSendKiroUrl = ({
+    addressTo,
+    presence,
+    chainId,
+    amount,
+  }: {
+    presence: Presence | undefined;
+    addressTo: string;
+    chainId: string;
+    amount: string;
+  }) => {
+    const desktopLink = `${URL}?addressTo=${addressTo}&chainId=${chainId}&amount=${amount}`;
+    const mobileLink = `${URL_METAMASK}?addressTo=${addressTo}&chainId=${chainId}&amount=${amount}`;
+    if (presence?.clientStatus?.mobile !== "online") {
+      return desktopLink;
+    }
+
+    if (presence?.clientStatus?.mobile === "online") {
+      return mobileLink;
+    }
+
+    return desktopLink;
+  };
+
+
+  public static getSendKiroReply = ({
+    addressTo,
+    presence,
+    chainId,
+    amount,
+  }: {
+    presence: Presence | undefined;
+    addressTo: string;
+    chainId: string;
+    amount: string;
+  }) => {
+    const url = this.getSendKiroUrl({ addressTo, presence, chainId, amount });
+
+    const embededLink = new MessageEmbed()
+      .setColor("#0099ff")
+      .setTitle("Connect")
+      .setURL(url)
+      .setDescription(`Send Kiro Transaction`);
+
+    return {
+      embeds: [embededLink],
+      ephemeral: true,
+    };
+  };
 }

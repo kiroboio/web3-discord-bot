@@ -12,10 +12,10 @@ export class Vault {
     address: string;
     chainId: 1 | 4;
   }) => {
-    if (this.contract.address) return;
+    if (Vault.contract.address) return;
     if (!address) return;
     const contract = await Web3Vault.getVaultContract({ address, chainId });
-    this.contract[address] = contract;
+    Vault.contract[address] = contract;
   };
 
   public static sendKiroTokenTransaction = async ({
@@ -29,7 +29,7 @@ export class Vault {
     value: string;
     chainId: string;
   }) => {
-    const library = Web3Vault.web3[chainId as "1" | "4"];
+    const library = await Web3Vault.web3;
     const onChainWalletContract = Vault.contract[address];
 
     if (!library || !onChainWalletContract) return;
@@ -67,7 +67,7 @@ export class Vault {
     vaultAddress?: string;
     chainId: 1 | 4;
   }) => {
-    const kiroContract = Web3Vault.getKiroboTokenContract({ chainId });
+    const kiroContract = await Web3Vault.getKiroboTokenContract({ chainId });
     const balance: string = await kiroContract.methods
       .balanceOf(address)
       .call();

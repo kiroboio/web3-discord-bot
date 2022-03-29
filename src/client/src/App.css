@@ -6,7 +6,7 @@
   pointer-events: none;
 }
 
-.Connect {
+.Button {
   padding: 0;
   border-width: 2px;
   box-shadow: 4px 4px 4px #222;
@@ -18,10 +18,10 @@
   align-items: center;
   background-color: #7388D9;
 }
-.Connect-active {
+.Button-active {
   cursor: pointer;
 }
-.Connect-active:hover {
+.Button-active:hover {
   background-color: #94AAFF;
 }
 
@@ -38,7 +38,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  font-size: calc(10px + 1vmin);
   color: white;
 }
 

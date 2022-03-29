@@ -2,14 +2,15 @@ import { Web3Vault } from "./Web3Vault";
 
 export class Web3Subscriber {
 
-  public static subscribeOnNewBlock = ({
+  public static subscribeOnNewBlock = async ({
     chainId,
     callback,
   }: {
     chainId: "1" | "4";
     callback: (blockNumber: number) => void;
   }) => {
-    const eth = Web3Vault.web3[chainId].eth;
+    const web3 =  await Web3Vault.web3
+    const eth = web3.eth;
     eth
       .subscribe("newBlockHeaders")
       .on("data", (e) => {
