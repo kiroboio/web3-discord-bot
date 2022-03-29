@@ -610,10 +610,11 @@ export class Bot {
     const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
       userTo.id
     )) as DbUser;
+    const user = this.users[interaction.user.id];
     if (!dbUserTo) {
       return interaction.reply({
-        content: `user ${userTo.username} not connected with web3 account`,
-        ephemeral: true,
+        content: `${userTo.toString()} ${interaction.user.username} sends you KIRO but you not connected with web3 account.`,
+        components: [UI.getButton({ label: "Connect", customId: "connect"})]
       });
     }
 
@@ -635,7 +636,6 @@ export class Bot {
         ephemeral: true,
       });
 
-    const user = this.users[interaction.user.id];
     switch (fromWalletType) {
       case "vault":
         if (!dbUserFrom.vault) {
@@ -665,7 +665,10 @@ export class Bot {
             addressTo: userToAddress,
             addressFrom: dbUserFrom.vault,
           });
-          if (reply) return interaction.reply(reply);
+          if (reply)  {
+            interaction.channel?.send(`${userTo.toString()}`);
+            return interaction.reply(reply);
+          }
           return interaction.reply("failed =(");
         }
         break;
