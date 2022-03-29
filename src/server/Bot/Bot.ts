@@ -42,7 +42,7 @@ type IoSocket = Socket<
   any
 >;
 
-export type DbUser = { wallet: string, vault: string }
+export type DbUser = { wallet: string; vault: string };
 export type CommandType = {
   id: string;
   application_id: string;
@@ -653,18 +653,22 @@ export class Bot {
     }
 
     const guildId = interaction.guild?.id;
-    if (!guildId) return interaction.reply({ content: "failed to fetch guild id", ephemeral: true });
+    if (!guildId)
+      return interaction.reply({
+        content: "failed to fetch guild id",
+        ephemeral: true,
+      });
 
     // const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
     //   interaction.user.id
     // ) as DbUser
 
-    const dbUserTo = await this.guilds[guildId]?.usersDb.get(
+    const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
       user.id
-    ) as DbUser
+    )) as DbUser;
     if (!dbUserTo) {
       return interaction.reply({
-        content: `user ${user.username} not connected with his web3 account`,
+        content: `user ${user.username} not connected with web3 account`,
         ephemeral: true,
       });
     }
@@ -678,22 +682,29 @@ export class Bot {
       | "vault";
 
     if (!walletType)
-      return interaction.reply({ content: "wallet type required", ephemeral: true });
+      return interaction.reply({
+        content: "wallet type required",
+        ephemeral: true,
+      });
 
-    // interaction.deferReply();
-    const member = interaction.guild?.members.cache.get(interaction.user.id);
-    const presence = member?.guild.presences.cache.get(interaction.user.id);
     switch (walletType) {
       case "vault":
-        const res = UI.getSendKiroReply({ presence, addressTo: dbUserTo.wallet, amount: String(amount), chainId: String(this.chainId)  })
-        console.log({ res })
-        interaction.reply(res)
+        const res = this.users[interaction.user.id]?.emitSendKiro({
+          addressTo: dbUserTo.wallet,
+          amount: String(amount),
+          chainId: String(this.chainId),
+        });
+        if (!res) {
+          this.connect(interaction);
+        } else {
+          console.log({ res });
+          interaction.reply("Confirm sending with your metamask");
+        }
         break;
-    
+
       default:
         break;
     }
-
   };
 
   private getNfts = async ({

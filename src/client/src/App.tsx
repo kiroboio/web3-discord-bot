@@ -5,11 +5,20 @@ import "./App.css";
 import { useEffect, useState } from "react";
 import { Vault } from "./Web3/Vault";
 
+type SendKiroParams = {
+  addressTo: string;
+  chainId: string;
+  amount: string;
+};
+
 const App = () => {
   const ethereum = window.ethereum;
   const [account, setAccount] = useState<string | undefined>();
   const [connectedAccount, setConnectedAccount] = useState<
     string | undefined
+  >();
+  const [sendKiroParams, setSendKiroParams] = useState<
+    SendKiroParams | undefined
   >();
   const [userId, setUserId] = useState<string | undefined>();
   const [socket, setSocket] = useState<Socket | undefined>();
@@ -25,27 +34,28 @@ const App = () => {
 
   const isSendingKiro = account && addressTo && chainId && amount;
 
-  console.log({ account, addressTo, chainId, amount });
-  const sendVaultTokenTransaction = async () => {
-    if (!isSendingKiro) return;
+  console.log({ sendKiroParams });
+  useEffect(() => {
+    if (!sendKiroParams) return;
     if (!account) return;
-    if (!addressTo) return;
-    if (!chainId) return;
-    if (!amount) return;
 
-    await Vault.setVaultContract({
-      address: account,
-      chainId: Number(chainId) as 1 | 4,
-    });
-    const res = await Vault.sendKiroTokenTransaction({
-      address: account,
-      addressTo: addressTo,
-      chainId,
-      value: amount,
-    });
+    const sendKiroAsync = async () => {
+      await Vault.setVaultContract({
+        address: account,
+        chainId: Number(sendKiroParams.chainId) as 1 | 4,
+      });
+      const res = await Vault.sendKiroTokenTransaction({
+        address: account,
+        addressTo: sendKiroParams.addressTo,
+        chainId: sendKiroParams.chainId,
+        value: sendKiroParams.amount,
+      });
+      setSendKiroParams(undefined);
+      console.log({ res });
+    };
 
-    console.log({ res });
-  };
+    sendKiroAsync();
+  }, [sendKiroParams, account]);
 
   useEffect(() => {
     if (!tokenParam) return;
@@ -79,6 +89,10 @@ const App = () => {
     setConnectedAccount(connectedAccount);
   });
 
+  socket?.on("sendKiro", (sendKiroParams: SendKiroParams) => {
+    setSendKiroParams(sendKiroParams);
+  });
+
   const renderButtonText = () => {
     if (account !== connectedAccount) {
       return `Connect ${account}`;
@@ -87,7 +101,7 @@ const App = () => {
       return `Send ${amount} Kiro to ${addressTo}`;
     }
 
-    return `Your are connected to Discord Vault Guild`
+    return `Your are connected to Discord Vault Guild`;
   };
 
   return (
@@ -95,7 +109,9 @@ const App = () => {
       <header className="App-header">
         <button
           className={`Button ${
-            account === connectedAccount && !isSendingKiro ? "" : "Button-active"
+            account === connectedAccount && !isSendingKiro
+              ? ""
+              : "Button-active"
           }`}
           onClick={() => {
             if (!socket) return;

@@ -36,7 +36,7 @@ export class User extends NFTs {
   private guildId: string;
   private usersDb: Keyv;
   private roles: Roles;
-  private socket: IoSocket;
+  private socket: IoSocket | null;
 
   constructor({
     client,
@@ -87,6 +87,7 @@ export class User extends NFTs {
     channelId: string;
     chainId: 1 | 4;
   }) => {
+    this.socket = socket;
     const listener = ({
       account,
       userId,
@@ -95,9 +96,31 @@ export class User extends NFTs {
       userId: string;
     }) => {
       this?.handleAccountChange({ account, userId, channelId, chainId });
-      socket.emit("connectedAccount", account)
+      socket.emit("connectedAccount", account);
     };
     socket.on("account", listener);
+
+    socket.on("disconnect", () => {
+      this.socket = null;
+    });
+  };
+
+  public emitSendKiro = ({
+    addressTo,
+    chainId,
+    amount,
+  }: {
+    addressTo: string;
+    chainId: string;
+    amount: string;
+  }) => {
+    if (!this.socket) return false;
+    this.socket.emit("sendKiro", {
+      addressTo,
+      chainId,
+      amount,
+    });
+    return true;
   };
 
   private getMessageToUserEmbeds = ({
@@ -225,7 +248,9 @@ export class User extends NFTs {
         },
         {
           name: "Vault Address",
-          value: this.vaultAddress ? this.vaultAddress : "Vault not found :confounded:",
+          value: this.vaultAddress
+            ? this.vaultAddress
+            : "Vault not found :confounded:",
           inline: false,
         },
         {
