@@ -11,7 +11,7 @@
     "heroku-local": "heroku local web",
     "build": "npm run build-client && rm -rf ./dist && tsc && npm run copy-files",
     "build-client": "cd src/client && npm run build && cd ../../",
-    "copy-files": "mkdir ./dist/client && cp -r ./src/client/build ./dist/client/build && cp -r ./src/images ./dist/images",
+    "copy-files": "cp -r ./src/client/build ./dist/client/build && cp -r ./src/images ./dist/images",
     "@testing-library/jest-dom": "^5.16.2",
     "@testing-library/react": "^12.1.4",
     "@testing-library/user-event": "^13.5.0",
