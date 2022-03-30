@@ -4,13 +4,7 @@ import erc20Abi from "./abi/erc20.json";
 import { AbiItem } from "web3-utils";
 import { Contract } from "web3-eth-contract";
 import Web3 from "web3";
-import { config } from "dotenv";
-config();
-
-const RPC_URLS = {
-  "1": `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_KEY}`,
-  "4": `wss://rinkeby.infura.io/ws/v3/${process.env.INFURA_KEY}`,
-};
+import { provider } from "web3-core";
 
 const vaultWalletAddress = {
   "1": "0xa82a423671379fD93f78eA4A37ABA73C019C6D3C",
@@ -23,6 +17,11 @@ export const kiroboAddress = {
   "4": "0xb678e95f83af08e7598ec21533f7585e83272799",
 };
 export class Web3Vault {
+
+  public static provider: provider;
+  public static setProvider = (provider: provider) => {
+    Web3Vault.provider = provider;
+  }
   public static isValidAddress = (address: string) => {
     const isAddress = Web3.utils.isAddress(address);
     if (!isAddress) return false;
@@ -30,12 +29,13 @@ export class Web3Vault {
     return isAddress;
   };
 
-  public static getVaultContractFactory = ({ chainId }: { chainId: 1 | 4 }) => {
+  public static getVaultContractFactory = async ({ chainId }: { chainId: 1 | 4 }) => {
     try {
       const factoryJsonAbi = FactoryJSON.abi as AbiItem[];
-      const contract = new this.web3[String(chainId)].eth.Contract(
+      const web3 = await Web3Vault.getWeb3();
+      const contract = new web3.eth.Contract(
         factoryJsonAbi,
-        vaultWalletAddress[String(chainId)]
+        vaultWalletAddress[String(chainId) as "1" | "4"]
       ) as unknown as Contract;
 
       return contract;
@@ -45,12 +45,13 @@ export class Web3Vault {
     }
   };
 
-  public static getKiroboTokenContract = ({ chainId }: { chainId: 1 | 4 }) => {
+  public static getKiroboTokenContract = async ({ chainId }: { chainId: 1 | 4 }) => {
     const chainIdText = String(chainId);
     const erc20AbiItem = erc20Abi as AbiItem[];
-    const tokenAddress = kiroboAddress[chainIdText];
+    const tokenAddress = kiroboAddress[chainIdText as "1" | "4"];
 
-    const contract = new this.web3[chainIdText].eth.Contract(
+    const web3 = await Web3Vault.getWeb3();
+    const contract = new web3.eth.Contract(
       erc20AbiItem,
       tokenAddress
     ) as unknown as Contract;
@@ -66,20 +67,21 @@ export class Web3Vault {
     address: string;
   }) => {
     try {
-      const onChainContract = this.getVaultContractFactory({ chainId });
+      const web3 = await Web3Vault.getWeb3();
+      const onChainContract = await Web3Vault.getVaultContractFactory({ chainId });
       const walletAccount = await onChainContract?.methods
         .getWallet(address)
         .call();
-      if (walletAccount && this.isValidAddress(walletAccount)) {
+      if (walletAccount && Web3Vault.isValidAddress(walletAccount)) {
         const walletJsonAbi = WalletJSON.abi as AbiItem[];
-        const contract = new this.web3[String(chainId)].eth.Contract(
+        
+        const contract = new web3.eth.Contract(
           walletJsonAbi,
           walletAccount
         ) as unknown as Contract;
 
         return contract;
       } else {
-        console.error("vault wallet not found");
         return undefined;
       }
     } catch (err) {
@@ -87,12 +89,12 @@ export class Web3Vault {
     }
   };
 
-  public static provider = {
-    "1": new Web3.providers.WebsocketProvider(RPC_URLS[1]),
-    "4": new Web3.providers.WebsocketProvider(RPC_URLS[4]),
+  // private static getProvider = async() => {
+  //   return await detectEthereumProvider() as provider;
+  // };
+  public static getWeb3 = async () => {
+    return new Web3(Web3Vault.provider)
   };
-  public static web3 = {
-    "1": new Web3(this.provider["1"]),
-    "4": new Web3(this.provider["4"]),
-  };
+
+  //public static web3 = Web3Vault.getWeb3();
 }

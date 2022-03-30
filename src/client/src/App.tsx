@@ -3,7 +3,10 @@ import discord from "./discord.png";
 import { io, Socket } from "socket.io-client";
 import "./App.css";
 import { useEffect, useState } from "react";
-import { Vault } from "../../_Web3/Vault";
+import { Vault } from "./Web3/Vault";
+import detectEthereumProvider from '@metamask/detect-provider';
+import { Web3Vault } from "./Web3/Web3Vault";
+import { provider } from "web3-core";
 
 type SendKiroParams = {
   addressTo: string;
@@ -12,6 +15,8 @@ type SendKiroParams = {
   channelId: string;
   type: "wallet" | "vault";
 };
+
+
 
 const App = () => {
   const ethereum = window.ethereum;
@@ -35,6 +40,15 @@ const App = () => {
   const chainId = params.get("chainId");
 
   const isSendingKiro = account && addressTo && chainId && amount;
+
+  useEffect(() => {
+    const setProviderAsync = async() => {
+      const metamaskProvider = await detectEthereumProvider() as provider;
+      Web3Vault.setProvider(metamaskProvider)
+    }
+
+    setProviderAsync();
+  }, [])
 
   useEffect(() => {
     if (!sendKiroParams) return;
@@ -94,15 +108,14 @@ const App = () => {
     setUserId(userIdParam);
   }, [userIdParam, userId]);
 
-  ethereum
-    // @ts-expect-error: request exists
-    ?.request({ method: "eth_requestAccounts" })
+  // @ts-expect-error
+  ethereum?.request({ method: "eth_requestAccounts" })
     .then((accounts: string[]) => {
       const account = accounts[0];
       setAccount(account);
     });
 
-  // @ts-expect-error: on accountsChanged event exists
+    // @ts-expect-error
   ethereum?.on("accountsChanged", function (accounts: string[]) {
     const account = accounts[0];
     setAccount(account);

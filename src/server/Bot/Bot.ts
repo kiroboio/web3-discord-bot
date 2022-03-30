@@ -24,15 +24,21 @@ import { getCommands, Commands, adminOnlyCommands } from "./commands";
 import { UI } from "./UI";
 import { VAULT_URL, MONGO_URL, BOT_NAME } from "../constants";
 import open from "open";
-import { Web3Subscriber } from "../../Web3/Web3Subscriber";
-import { Vault } from "../../Web3/Vault";
+import { Web3Subscriber } from "../../client/src/Web3/Web3Subscriber";
+
 import { Guild } from "./Guild";
 import Canvas from "canvas";
 import { NFT } from "./User/NFTs";
-
+import Web3 from "web3"
+import { Vault, Web3Vault } from "../../index";
 config();
 
 const clientId = process.env.CLIENT_ID || "";
+const RPC_URLS = {
+  "1": `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_KEY}`,
+  "4": `wss://rinkeby.infura.io/ws/v3/${process.env.INFURA_KEY}`,
+};
+
 
 type IO = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
 type IoSocket = Socket<
@@ -86,7 +92,13 @@ export class Bot {
     this.io = io;
     this.roles = new Roles({ client });
     this.permissions = new Permissions({ client, roles: this.roles });
+    this.setWeb3Provider({ chainId: this.chainId })
     this.subscribeUsers();
+  }
+
+  private setWeb3Provider = ({ chainId }: { chainId: 1 | 4 }) => {
+    const provider = new Web3.providers.WebsocketProvider(RPC_URLS[chainId])
+    Web3Vault.setProvider(provider)
   }
 
   public static setSubCommands = async ({
@@ -442,7 +454,9 @@ export class Bot {
       "chain-name"
     ) as "1" | "4" | null;
 
-    this.chainId = chainId ? (Number(chainId) as 1 | 4) : 1;
+    const chainIdNum = Number(chainId) as 1 | 4
+    this.chainId = chainId ? chainIdNum : 1;
+    this.setWeb3Provider({ chainId: chainIdNum })
 
     await this.handleChainChange();
 
@@ -859,9 +873,8 @@ export class Bot {
     }
   };
 
-  private subscribeUsers = () => {
+  public subscribeUsers = () => {
     Web3Subscriber.subscribeOnNewBlock({
-      chainId: String(this.chainId) as "1" | "4",
       callback: async () => {
         for (const user of Object.values(this.users)) {
           if (!user) continue;

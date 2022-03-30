@@ -18,9 +18,8 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "skipLibCheck": true,
-    "baseUrl": "./",
-    "jsx": "react-jsx"
+    "baseUrl": "src",
   },
-  "include": ["src/server", "src/Web3"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

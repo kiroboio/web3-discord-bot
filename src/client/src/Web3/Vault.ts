@@ -34,7 +34,7 @@ export class Vault {
     resolve,
     reject,
   }: TrxParams) => {
-    const library = await Web3Vault.web3;
+    const library = await Web3Vault.getWeb3();
     if (!library) return;
 
     const kiroContract = await Web3Vault.getKiroboTokenContract({
@@ -74,7 +74,7 @@ export class Vault {
     resolve,
     reject,
   }: TrxParams) => {
-    const library = await Web3Vault.web3;
+    const library = await Web3Vault.getWeb3();
     const onChainWalletContract = Vault.contract[address];
 
     if (!library || !onChainWalletContract) return;
