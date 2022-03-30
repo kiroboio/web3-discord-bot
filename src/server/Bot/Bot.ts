@@ -660,18 +660,21 @@ export class Bot {
           return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
         }
 
-        const res = user?.emitSendKiro({
-          addressTo: userToAddress,
-          amount: String(amount),
-          chainId: String(this.chainId),
-          channelId: interaction.channelId,
-          type: fromWalletType,
-        });
-
-        if (!res) {
+        
+        if (!user?.socket) {
           return this.connect(interaction);
-          
         } else {
+          const message = await interaction.channel?.send(`${userTo.toString()}`)
+          
+          user?.emitSendKiro({
+            addressTo: userToAddress,
+            amount: String(amount),
+            chainId: String(this.chainId),
+            channelId: interaction.channelId,
+            type: fromWalletType,
+            url: message?.url,
+          });
+          
           const reply = await user?.getSendTrxMessage({
             userToId: userTo.id,
             symbol: "KIRO",
@@ -682,13 +685,11 @@ export class Bot {
           });
           
           if (reply)  {
-            interaction.channel?.send(`${userTo.toString()}`);
-            return interaction.reply(reply);
-            
+            return interaction.reply(reply);    
           }
 
           
-          return interaction.reply("failed =(");
+          return interaction.reply("Transaction failed");
           
         }
 

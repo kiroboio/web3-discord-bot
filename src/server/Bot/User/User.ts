@@ -36,7 +36,7 @@ export class User extends NFTs {
   private guildId: string;
   private usersDb: Keyv;
   private roles: Roles;
-  private socket: IoSocket | null;
+  public socket: IoSocket | null;
 
   constructor({
     client,
@@ -106,20 +106,20 @@ export class User extends NFTs {
 
     socket.on(
       "transactionSendSuccess",
-      ({ trxHash, channelId }: { trxHash: string; channelId: string }) => {
+      ({ trxHash, channelId, url }: { trxHash: string; channelId: string; url?:string }) => {
         const channel = this.client.channels.cache.get(channelId) as TextChannel
 
-        const embed = UI.getMessageEmbedWith({ title:`:tada: Transaction sent successfully`, fields: [{ name: 'Hash', value: trxHash }] })
+        const embed = UI.getMessageEmbedWith({ title:`:tada: Transaction sent successfully`, url, fields: [{ name: 'Hash', value: trxHash }] })
         channel?.send({ embeds: [embed] });
       }
     );
 
     socket.on(
       "transactionSendFailed",
-      ({ error, channelId }: { error: string; channelId: string }) => {
+      ({ error, channelId, url }: { error: string; channelId: string; url?:string }) => {
         const channel = this.client.channels.cache.get(channelId) as TextChannel
 
-        const embed = UI.getMessageEmbedWith({ title:`:face_with_symbols_over_mouth: Transaction failed`, fields: [{ name: 'Error', value: error }] })
+        const embed = UI.getMessageEmbedWith({ title:`:face_with_symbols_over_mouth: Transaction failed`, color: "RED", url, fields: [{ name: 'Error', value: error }] })
         channel?.send({ embeds: [embed] });
       }
     );
@@ -130,13 +130,15 @@ export class User extends NFTs {
     chainId,
     amount,
     channelId,
-    type
+    type,
+    url
   }: {
     chainId: string;
     amount: string;
     addressTo: string;
     channelId: string;
-    type: "wallet" | "vault"
+    type: "wallet" | "vault";
+    url?: string;
   }) => {
     if (!this.socket) return false;
     this.socket.emit("sendKiro", {
@@ -144,7 +146,8 @@ export class User extends NFTs {
       chainId,
       amount,
       channelId,
-      type
+      type,
+      url
     });
     return true;
   };

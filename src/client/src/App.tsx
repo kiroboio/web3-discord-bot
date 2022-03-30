@@ -14,6 +14,7 @@ type SendKiroParams = {
   amount: string;
   channelId: string;
   type: "wallet" | "vault";
+  url?: string;
 };
 
 
@@ -70,6 +71,7 @@ const App = () => {
           socket.emit("transactionSendSuccess", {
             trxHash,
             channelId: sendKiroParams.channelId,
+            url: sendKiroParams.url
           });
         },
         reject: (error: string) => {
@@ -77,6 +79,7 @@ const App = () => {
           socket.emit("transactionSendFailed", {
             error,
             channelId: sendKiroParams.channelId,
+            url: sendKiroParams.url
           });
         },
       }
