@@ -6,8 +6,6 @@ import {
   EmbedField,
   TextChannel,
   Permissions as DiscordPermissions,
-  MessageAttachment,
-  MessageEmbed,
 } from "discord.js";
 import { Server, Socket } from "socket.io";
 import { config } from "dotenv";
@@ -27,8 +25,6 @@ import open from "open";
 import { Web3Subscriber } from "../../client/src/Web3/Web3Subscriber";
 
 import { Guild } from "./Guild";
-import Canvas from "canvas";
-import { NFT } from "./User/NFTs";
 import Web3 from "web3"
 import { Vault, Web3Vault } from "../../index";
 config();
@@ -496,11 +492,10 @@ export class Bot {
     const message = await user.getVaultMessage({
       chainId: this.chainId,
     });
-    const nftEmbeds = await this.getNfts({ interaction, type: "Vault" });
 
     return interaction.editReply({
-      embeds: message?.embeds.concat(nftEmbeds?.embeds || []),
-      files: message?.files?.concat(nftEmbeds?.attachments || []),
+      embeds: message?.embeds,
+      files: message?.files,
     });
   };
 
@@ -692,13 +687,9 @@ export class Bot {
           return interaction.reply("Transaction failed");
           
         }
-
-
-     
-    
   };
 
-  private getNfts = async ({
+  public getNfts = async ({
     interaction,
     type,
   }: {
@@ -709,91 +700,13 @@ export class Bot {
     if (!user) {
       interaction.editReply({ content: "not connected" });
     }
-
-    //await interaction.deferReply();
-    const nfts = await user?.getNfts({
-      chain: this.chainId === 1 ? "eth" : "rinkeby",
-    });
-
-    if (!nfts || (!nfts.wallet.length && !nfts.vault.length)) {
-      return;
-    }
-
-    const nftsEmbeds = await this.getNftsMessageEmbed({
-      nfts: type === "Vault" ? nfts.vault : nfts.wallet,
+    const nftsEmbeds = await user?.getNftsEmbeds({
+      interaction,
       type,
-      username: interaction.user.username,
+      chainId: this.chainId
     });
 
     return nftsEmbeds;
-  };
-
-  private getNftsMessageEmbed = async ({
-    nfts,
-    type,
-  }: // username,
-  {
-    nfts: NFT[];
-    type: "Wallet" | "Vault";
-    username: string;
-  }) => {
-    const embeds: MessageEmbed[] = [];
-    const attachments: MessageAttachment[] = [];
-
-    const logoAttachment = UI.getMessageImageAttachment({
-      imageName: "kirogo",
-    });
-
-    attachments.push(logoAttachment);
-    const max = nfts.length < 4 ? nfts.length : 4;
-    for (let i = 0; i < max; i++) {
-      if (nfts[i].type === "base64") {
-        const canvas = await this.getNftCanvas(nfts[i]);
-        const nftFileName = nfts[i].name + i + type;
-        const nftAttachment = new MessageAttachment(
-          canvas.toBuffer(),
-          `${nftFileName}.png`
-        );
-        attachments.push(nftAttachment);
-
-        embeds.push(
-          UI.getMessageEmbedWith({
-            url: `https://vault.kirobo.me/overview`,
-            image: `attachment://${nftFileName}.png`,
-            footer: {
-              text: "Kirobo Vault",
-              iconURL: "attachment://kirogo.png",
-            },
-          })
-        );
-      } else {
-        embeds.push(
-          UI.getMessageEmbedWith({
-            url: `https://vault.kirobo.me/overview`,
-            image: nfts[i].value,
-            footer: {
-              text: "Kirobo Vault",
-              iconURL: "attachment://kirogo.png",
-            },
-          })
-        );
-      }
-    }
-
-    return { embeds, attachments };
-  };
-
-  private getNftCanvas = async (nft: NFT) => {
-    const nftImage = await Canvas.loadImage(nft.value);
-    const nativeWidth = nftImage.width;
-    const nativeHeight = nftImage.height;
-
-    const canvas = Canvas.createCanvas(nativeWidth, nativeHeight);
-    const context = canvas.getContext("2d");
-
-    context.drawImage(nftImage, 0, 0, nativeWidth, nativeHeight);
-
-    return canvas;
   };
 
   private connectUser = async ({
