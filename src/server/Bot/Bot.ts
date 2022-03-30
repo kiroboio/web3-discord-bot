@@ -69,7 +69,6 @@ export class Bot {
 
   private client: Client<boolean>;
   private io: IO;
-  private users: { [key: string]: User | undefined } = {};
 
   private roles;
   private chainId: 1 | 4 = 4;
@@ -89,7 +88,6 @@ export class Bot {
     this.roles = new Roles({ client });
     this.permissions = new Permissions({ client, roles: this.roles });
     this.setWeb3Provider({ chainId: this.chainId })
-    this.subscribeUsers();
   }
 
   private setWeb3Provider = ({ chainId }: { chainId: 1 | 4 }) => {
@@ -147,15 +145,17 @@ export class Bot {
   };
 
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
-    const users = this.client.users.cache.values();
+    
     await Promise.all(
       guilds.map(async (guildId) => {
+        const users = this.client.guilds.cache.get(guildId)?.members.cache.values()
+        if(!users) return;
         for (const user of users) {
           const dbUser = (await this.guilds[guildId]?.usersDb.get(user.id)) as
             | { wallet: string; vault?: string }
             | undefined;
           if (!dbUser) continue;
-
+            
           this.createUser({
             userId: user.id,
             guildId,
@@ -454,7 +454,7 @@ export class Bot {
     this.chainId = chainId ? chainIdNum : 1;
     this.setWeb3Provider({ chainId: chainIdNum })
 
-    await this.handleChainChange();
+    await this.handleChainChange({ guildId: interaction.guildId });
 
     interaction.reply(this.getChainReply({ chainId }));
   };
@@ -475,9 +475,20 @@ export class Bot {
     });
   };
 
+  private getGuildUser = ({ id, guildId  }: { id: string, guildId?: string | null }) => {
+    if(!guildId) return undefined;
+    return this.guilds[guildId]?.users[id]
+  }
+
+  private deleteGuildUser = ({ id, guildId  }: { id: string, guildId?: string | null }) => {
+    if(guildId) delete this.guilds[guildId]?.users[id]
+  }
+
   private getMyVault = async (interaction: CommandInteraction<CacheType>) => {
     await interaction.deferReply();
-    const user = this.users[interaction.user.id];
+    if(!interaction.guildId) return;
+
+    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
     if (!user) {
       const connectButton = UI.getButton({
         label: "Connect",
@@ -526,21 +537,22 @@ export class Bot {
   };
 
   private disconnect = async (interaction: CommandInteraction<CacheType>) => {
-    if (!this.users[interaction.user.id]) {
+    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    if (!user) {
       interaction.reply("not connected");
       return;
     }
 
     if (!interaction.guildId) return;
     await this.guilds[interaction.guildId]?.usersDb.delete(interaction.user.id);
-    const user = this.users[interaction.user.id];
+ 
     user?.removeAllListeners();
     await this.roles.deleteUserRoles({
       userId: interaction.user.id,
       guildId: interaction.guildId,
     });
 
-    delete this.users[interaction.user.id];
+    this.deleteGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
     interaction.reply({ content: "disconnected", ephemeral: true });
   };
   private addRole = async (interaction: CommandInteraction<CacheType>) => {
@@ -618,7 +630,7 @@ export class Bot {
     const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
       userTo.id
     )) as DbUser;
-    const user = this.users[interaction.user.id];
+    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
     if (!dbUserTo) {
       return interaction.reply({
         content: `${userTo.toString()} ${interaction.user.username} sends you KIRO but you not connected with web3 account.`,
@@ -696,7 +708,7 @@ export class Bot {
     interaction: CommandInteraction<CacheType>;
     type: "Vault" | "Wallet";
   }) => {
-    const user = this.users[interaction.user.id];
+    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
     if (!user) {
       interaction.editReply({ content: "not connected" });
     }
@@ -767,13 +779,17 @@ export class Bot {
       vaultAddress,
       roles: this.roles,
     });
-    this.users[userId] = user;
+    this.guilds[guildId]?.setUser({ user, userId });
 
     return user;
   };
 
-  public handleChainChange = async () => {
-    for (const user of Object.values(this.users)) {
+  public handleChainChange = async ({ guildId }: { guildId?: string | null }) => {
+    if(!guildId) return;
+
+    const users = this.guilds[guildId]?.users
+    if(!users) return
+    for (const user of Object.values(users)) {
       if (!user) continue;
 
       const address = user.getAddress();
@@ -787,10 +803,12 @@ export class Bot {
     }
   };
 
-  public subscribeUsers = () => {
+  public subscribeUsers = ({ guildId }:{ guildId: string }) => {
     Web3Subscriber.subscribeOnNewBlock({
       callback: async () => {
-        for (const user of Object.values(this.users)) {
+        const users = this.guilds[guildId]?.users
+        if(!users) return
+        for (const user of Object.values(users)) {
           if (!user) continue;
 
           const address = user.getAddress();

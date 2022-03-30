@@ -51,9 +51,10 @@ client.on("ready", async () => {
   bot.setGuilds({ guilds })
   await bot.setCommands({ guilds });
   await bot.setConnectedUsers({ guilds });
-  await bot.handleChainChange();
+  // await bot.handleChainChange();
   bot.setGuildsBotChannel({ guilds });
   bot.permissions.setGuildsAdminCommandsPermissions({ guilds });
+  guilds.forEach((guildId) => bot.subscribeUsers({ guildId }) )
 });
 
 client.on("guildCreate", (guild) => {
@@ -62,6 +63,7 @@ client.on("guildCreate", (guild) => {
   bot.setCommand(guild.id);
   bot.setGuildBotChannel({ guildId: guild.id });
   bot.permissions.setAdminCommandsPermissions({ guildId: guild.id })
+  bot.subscribeUsers({ guildId: guild.id })
 });
 
 client.on("guildDelete", (guild) => {
