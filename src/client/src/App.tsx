@@ -3,7 +3,7 @@ import discord from "./discord.png";
 import { io, Socket } from "socket.io-client";
 import "./App.css";
 import { useEffect, useState } from "react";
-import { Vault } from "./Web3/Vault";
+import { Vault } from "../../_Web3/Vault";
 
 type SendKiroParams = {
   addressTo: string;
