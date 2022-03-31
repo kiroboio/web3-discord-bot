@@ -147,7 +147,7 @@ export class Roles {
       imageName: "kirogo",
     });
     const embed = UI.getMessageEmbedWith({
-      title: `Kirobo Role`,
+      title: `Kirobo Roles`,
       url: VAULT_URL,
       fields,
       thumbnail: "attachment://vault.png",
