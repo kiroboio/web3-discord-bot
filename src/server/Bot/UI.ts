@@ -1,7 +1,6 @@
 import {
   ColorResolvable,
   MessageEmbed,
-  Presence,
   MessageActionRow,
   MessageButton,
   MessageButtonStyleResolvable,
@@ -85,20 +84,25 @@ export class UI {
     return new MessageActionRow().addComponents(button);
   };
 
-  public static getUrlButton = ({
+  public static getUrlButtons = ({
     label,
-    style = "PRIMARY",
     url,
+    secondLabel,
+    secondUrl,
   }: {
     label: string;
     url: string;
-    style?: MessageButtonStyleResolvable;
+    secondLabel: string;
+    secondUrl: string;
   }) => {
-    const button = new MessageButton()
-      .setLabel(label)
-      .setStyle(style)
-      .setURL(url);
-    return new MessageActionRow().addComponents(button);
+
+    return new MessageActionRow().addComponents([
+      new MessageButton().setStyle("LINK").setURL(url).setLabel(label),
+      new MessageButton()
+        .setStyle("LINK")
+        .setURL(secondUrl)
+        .setLabel(secondLabel)
+    ]);
   };
 
   public static getButtonsRow = ({
@@ -141,41 +145,38 @@ export class UI {
 
   public static getConnectUrl = ({
     token,
-    presence,
     userId,
   }: {
-    presence: Presence | undefined;
     token: string;
     userId: string;
   }) => {
     const desktopLink = `${URL}?token=${token}&userId=${userId}`;
     const mobileLink = `${URL_METAMASK}?token=${token}&userId=${userId}`;
-    if (presence?.clientStatus?.mobile !== "online") {
-      return desktopLink;
-    }
+    // if (presence?.clientStatus?.desktop === "online") {
+    //   return desktopLink;
+    // }
 
-    if (presence?.clientStatus?.mobile === "online") {
-      return mobileLink;
-    }
+    // if (presence?.clientStatus?.mobile === "online") {
+    //   return mobileLink;
+    // }
 
-    return desktopLink;
+    return { desktopLink, mobileLink };
   };
 
   public static getConnectReply = ({
     token,
-    presence,
     userId,
   }: {
-    presence: Presence | undefined;
     token: string;
     userId: string;
   }) => {
     const embed = new MessageEmbed().setTitle(`Connect to metamask account`);
 
+    const { desktopLink, mobileLink } = UI.getConnectUrl({ token, userId })
     return {
       embeds: [embed],
       ephemeral: true,
-      components: [this.getButton({ label: "Connect", url: UI.getConnectUrl({ token, presence, userId }) })],
+      components: [this.getUrlButtons({ label: "Chrome App", url: desktopLink, secondLabel: "Metamask App", secondUrl: mobileLink  })],
     };
   };
 }

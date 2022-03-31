@@ -454,8 +454,7 @@ export class Bot {
     if (!interaction.guildId) return;
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
-      const presence = this.client.guilds.cache.get(interaction.guildId!)?.presences.cache.get(interaction.user.id);
-      const reply = UI.getConnectReply({ token, userId: interaction.user.id, presence});
+      const reply = UI.getConnectReply({ token, userId: interaction.user.id });
       interaction.reply(reply);
 
       this.connectUser({

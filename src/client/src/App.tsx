@@ -105,7 +105,7 @@ const App = () => {
     if (!tokenParam) return;
     const socket = io(HOST, { query: { token: tokenParam } });
     setSocket(socket);
-    // window.history.replaceState({}, document.title, "/");
+    window.history.replaceState({}, document.title, "/");
   }, [tokenParam, HOST]);
 
   useEffect(() => {
@@ -114,14 +114,14 @@ const App = () => {
     setUserId(userIdParam);
   }, [userIdParam, userId]);
 
-  // @ts-expect-error
+  // @ts-expect-error: request exists 
   ethereum?.request({ method: "eth_requestAccounts" })
     .then((accounts: string[]) => {
       const account = accounts[0];
       setAccount(account);
     });
 
-  // @ts-expect-error
+  // @ts-expect-error: on exists 
   ethereum?.on("accountsChanged", function (accounts: string[]) {
     const account = accounts[0];
     setAccount(account);
