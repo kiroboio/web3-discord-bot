@@ -149,7 +149,7 @@ export class UI {
     userId: string;
   }) => {
     const desktopLink = `${URL}?token=${token}&userId=${userId}`;
-    const mobileLink = `${URL_METAMASK}?token=${token}$userId=${userId}`;
+    const mobileLink = `${URL_METAMASK}?token=${token}&userId=${userId}`;
     if (presence?.clientStatus?.mobile !== "online") {
       return desktopLink;
     }
