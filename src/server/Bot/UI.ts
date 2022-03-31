@@ -72,19 +72,15 @@ export class UI {
 
   public static getButton = ({
     label,
-    // customId,
-    // style = "PRIMARY",
     url,
   }: {
     label: string;
-    customId?: string;
+    url: string;
     style?: MessageButtonStyleResolvable;
-    url?: string;
   }) => {
     const button = new MessageButton().setLabel(label).setStyle("LINK")
 
     if (url) button.setURL(url);
-    //if (customId) button.setCustomId(customId);
 
     return new MessageActionRow().addComponents(button);
   };
@@ -179,7 +175,7 @@ export class UI {
     return {
       embeds: [embed],
       ephemeral: true,
-      components: [this.getButton({ customId: "connect", label: "Connect", url: UI.getConnectUrl({ token, presence, userId }) })],
+      components: [this.getButton({ label: "Connect", url: UI.getConnectUrl({ token, presence, userId }) })],
     };
   };
 }

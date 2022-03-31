@@ -482,14 +482,7 @@ export class Bot {
 
     const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
     if (!user) {
-      const connectButton = UI.getButton({
-        label: "Connect",
-        customId: "connect",
-      });
-      return interaction.editReply({
-        content: "your address not found, try to connect",
-        components: [connectButton],
-      });
+      return this.connect(interaction)
     }
 
     const message = await user.getVaultMessage({
@@ -600,7 +593,6 @@ export class Bot {
     if (!dbUserTo) {
       return interaction.reply({
         content: `${userTo.toString()} ${interaction.user.username} sends you KIRO but you not connected with web3 account.`,
-        components: [UI.getButton({ label: "Connect", customId: "connect"})]
       });
     }
 
