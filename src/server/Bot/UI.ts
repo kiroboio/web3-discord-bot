@@ -72,17 +72,19 @@ export class UI {
 
   public static getButton = ({
     label,
-    customId,
-    style = "PRIMARY",
+    // customId,
+    // style = "PRIMARY",
+    url,
   }: {
     label: string;
-    customId: string;
+    customId?: string;
     style?: MessageButtonStyleResolvable;
+    url?: string;
   }) => {
-    const button = new MessageButton().setLabel(label).setStyle(style);
+    const button = new MessageButton().setLabel(label).setStyle("LINK")
 
-    if (customId) button.setCustomId(customId);
-
+    if (url) button.setURL(url);
+    //if (customId) button.setCustomId(customId);
 
     return new MessageActionRow().addComponents(button);
   };
@@ -96,10 +98,12 @@ export class UI {
     url: string;
     style?: MessageButtonStyleResolvable;
   }) => {
-    const button = new MessageButton().setLabel(label).setStyle(style).setURL(url)
+    const button = new MessageButton()
+      .setLabel(label)
+      .setStyle(style)
+      .setURL(url);
     return new MessageActionRow().addComponents(button);
   };
-
 
   public static getButtonsRow = ({
     label,
@@ -161,15 +165,21 @@ export class UI {
     return desktopLink;
   };
 
-  public static getConnectReply = () => {
-    const embed = new MessageEmbed().setTitle(
-      `Connect to metamask account`
-    );
+  public static getConnectReply = ({
+    token,
+    presence,
+    userId,
+  }: {
+    presence: Presence | undefined;
+    token: string;
+    userId: string;
+  }) => {
+    const embed = new MessageEmbed().setTitle(`Connect to metamask account`);
 
     return {
       embeds: [embed],
       ephemeral: true,
-      components: [this.getButton({ customId: "connect", label: "Connect" })],
+      components: [this.getButton({ customId: "connect", label: "Connect", url: UI.getConnectUrl({ token, presence, userId }) })],
     };
   };
 }

@@ -134,6 +134,9 @@ const App = () => {
   });
 
   const renderButtonText = () => {
+    if (!account) {
+      return `Connect to metamask`;
+    }
     if (account !== connectedAccount) {
       return `Connect ${account}`;
     }

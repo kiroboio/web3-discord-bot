@@ -21,7 +21,6 @@ import { Permissions } from "./Permissions";
 import { getCommands, Commands, adminOnlyCommands } from "./commands";
 import { UI } from "./UI";
 import { VAULT_URL, MONGO_URL, BOT_NAME } from "../constants";
-import open from "open";
 import { Web3Subscriber } from "../../client/src/Web3/Web3Subscriber";
 
 import { Guild } from "./Guild";
@@ -297,7 +296,7 @@ export class Bot {
     if (interaction.isButton()) {
       switch (interaction.customId) {
         case Commands.Connect:
-          await this.connectOnButtonClick(interaction);
+          await this.connect(interaction);
           break;
 
         case Commands.Help:
@@ -353,15 +352,7 @@ export class Bot {
       interaction.user.id
     );
     if (!user) {
-      const connectButton = UI.getButton({
-        label: "Connect",
-        customId: "connect",
-      });
-      interaction.reply({
-        content: "Not connected",
-        ephemeral: true,
-        components: [connectButton],
-      });
+      this.connect(interaction)
       return false;
     }
 
@@ -463,7 +454,8 @@ export class Bot {
     if (!interaction.guildId) return;
     crypto.randomBytes(48, async (_err, buffer) => {
       const token = buffer.toString("hex");
-      const reply = UI.getConnectReply();
+      const presence = this.client.guilds.cache.get(interaction.guildId!)?.presences.cache.get(interaction.user.id);
+      const reply = UI.getConnectReply({ token, userId: interaction.user.id, presence});
       interaction.reply(reply);
 
       this.connectUser({
@@ -507,32 +499,6 @@ export class Bot {
     return interaction.editReply({
       embeds: message?.embeds,
       files: message?.files,
-    });
-  };
-
-  private connectOnButtonClick = async (
-    interaction: CommandInteraction<CacheType>
-  ) => {
-    if (!interaction.guildId) return;
-    crypto.randomBytes(48, async (_err, buffer) => {
-      const token = buffer.toString("hex");
-      const guild = this.client.guilds.cache.get(interaction?.guild?.id || "");
-      const user = guild?.members.cache.get(interaction.user.id);
-      const presence = user?.guild.presences.cache.get(interaction.user.id);
-      interaction.reply({ content: "Connect to metamask", ephemeral: true });
-      const url = UI.getConnectUrl({
-        presence,
-        token,
-        userId: interaction.user.id,
-      });
-      open(url);
-
-      this.connectUser({
-        userId: interaction.user.id,
-        token: { token },
-        guildId: interaction?.guild?.id || "",
-        interaction,
-      });
     });
   };
 
