@@ -17,6 +17,14 @@ type SendKiroParams = {
   url?: string;
 };
 
+const shortenAddress = (address?: string | null, length = 4): string => {
+  if (!address) return '';
+  if (address.length < length * 2 + 5) return address;
+  
+  const left = address.slice(0, length + 2);
+  const right = address.slice(address.length - length);
+  return `${left}...${right}`;
+};
 
 
 const App = () => {
@@ -36,11 +44,6 @@ const App = () => {
   const tokenParam = params.get("token");
   const userIdParam = params.get("userId") as string;
 
-  const addressTo = params.get("addressTo");
-  const amount = params.get("amount");
-  const chainId = params.get("chainId");
-
-  const isSendingKiro = account && addressTo && chainId && amount;
 
   useEffect(() => {
     const setProviderAsync = async() => {
@@ -102,7 +105,7 @@ const App = () => {
     if (!tokenParam) return;
     const socket = io(HOST, { query: { token: tokenParam } });
     setSocket(socket);
-    window.history.replaceState({}, document.title, "/");
+    // window.history.replaceState({}, document.title, "/");
   }, [tokenParam, HOST]);
 
   useEffect(() => {
@@ -118,7 +121,7 @@ const App = () => {
       setAccount(account);
     });
 
-    // @ts-expect-error
+  // @ts-expect-error
   ethereum?.on("accountsChanged", function (accounts: string[]) {
     const account = accounts[0];
     setAccount(account);
@@ -138,10 +141,7 @@ const App = () => {
       return `Connect to metamask`;
     }
     if (account !== connectedAccount) {
-      return `Connect ${account}`;
-    }
-    if (isSendingKiro) {
-      return `Send ${amount} Kiro to ${addressTo}`;
+      return `Connect ${shortenAddress(account)}`;
     }
 
     return `Your are connected to Discord Vault Guild`;
@@ -152,7 +152,7 @@ const App = () => {
       <header className="App-header">
         <button
           className={`Button ${
-            account === connectedAccount && !isSendingKiro
+            account && account === connectedAccount 
               ? ""
               : "Button-active"
           }`}
