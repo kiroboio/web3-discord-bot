@@ -152,6 +152,36 @@ export class User extends NFTs {
     return true;
   };
 
+  public emitSendKiroSafe = ({
+    addressTo,
+    chainId,
+    amount,
+    channelId,
+    type,
+    passcode,
+    url
+  }: {
+    chainId: string;
+    amount: string;
+    addressTo: string;
+    channelId: string;
+    type: "wallet" | "vault";
+    passcode: string;
+    url?: string;
+  }) => {
+    if (!this.socket) return false;
+    this.socket.emit("sendKiro", {
+      addressTo,
+      chainId,
+      amount,
+      channelId,
+      type,
+      url,
+      passcode,
+    });
+    return true;
+  };
+
   private getMessageToUserEmbeds = ({
     color = COLORS.primary,
     title,

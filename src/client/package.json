@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@babel/core": "7.12.3",
+    "@kiroboio/safe-transfer-lib": "^3.0.0",
+    "@kiroboio/web3-react-safe-transfer": "^1.0.1",
     "@metamask/detect-provider": "^1.2.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.4.3",
     "@svgr/webpack": "5.5.0",

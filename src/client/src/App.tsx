@@ -7,7 +7,7 @@ import { Vault } from "./Web3/Vault";
 import detectEthereumProvider from '@metamask/detect-provider';
 import { Web3Vault } from "./Web3/Web3Vault";
 import { provider } from "web3-core";
-
+import { observer, useAccount, Connectors } from "@kiroboio/web3-react-safe-transfer"
 type SendKiroParams = {
   addressTo: string;
   chainId: string;
@@ -15,6 +15,7 @@ type SendKiroParams = {
   channelId: string;
   type: "wallet" | "vault";
   url?: string;
+  passcode?: string;
 };
 
 const shortenAddress = (address?: string | null, length = 4): string => {
@@ -27,9 +28,8 @@ const shortenAddress = (address?: string | null, length = 4): string => {
 };
 
 
-const App = () => {
-  const ethereum = window.ethereum;
-  const [account, setAccount] = useState<string | undefined>();
+const App = observer(() => {
+  const { connect, address, deposit } = useAccount();
   const [connectedAccount, setConnectedAccount] = useState<
     string | undefined
   >();
@@ -51,21 +51,31 @@ const App = () => {
       Web3Vault.setProvider(metamaskProvider)
     }
 
+    connect.run(Connectors.Injected);
     setProviderAsync();
   }, [])
 
   useEffect(() => {
     if (!sendKiroParams) return;
-    if (!account) return;
+    if (!address) return;
 
+    if(sendKiroParams.passcode) {
+
+      deposit.run({
+        to: sendKiroParams.addressTo,
+        passcode: sendKiroParams.passcode,
+        value: sendKiroParams.amount
+      })
+      return
+    }
     const sendKiroAsync = async () => {
       await Vault.setVaultContract({
-        address: account,
+        address,
         chainId: Number(sendKiroParams.chainId) as 1 | 4,
       });
 
       const params = {
-        address: account,
+        address,
         addressTo: sendKiroParams.addressTo,
         chainId: sendKiroParams.chainId,
         value: sendKiroParams.amount,
@@ -99,7 +109,7 @@ const App = () => {
     };
 
     sendKiroAsync();
-  }, [sendKiroParams, account, socket]);
+  }, [sendKiroParams, socket, address]);
 
   useEffect(() => {
     if (!tokenParam) return;
@@ -114,18 +124,6 @@ const App = () => {
     setUserId(userIdParam);
   }, [userIdParam, userId]);
 
-  // @ts-expect-error: request exists 
-  ethereum?.request({ method: "eth_requestAccounts" })
-    .then((accounts: string[]) => {
-      const account = accounts[0];
-      setAccount(account);
-    });
-
-  // @ts-expect-error: on exists 
-  ethereum?.on("accountsChanged", function (accounts: string[]) {
-    const account = accounts[0];
-    setAccount(account);
-  });
 
   socket?.on("connectedAccount", (connectedAccount) => {
     if (!connectedAccount) return;
@@ -137,11 +135,11 @@ const App = () => {
   });
 
   const renderButtonText = () => {
-    if (!account) {
+    if (!address) {
       return `Connect to metamask`;
     }
-    if (account !== connectedAccount) {
-      return `Connect ${shortenAddress(account)}`;
+    if (address !== connectedAccount) {
+      return `Connect ${shortenAddress(address)}`;
     }
 
     return `Your are connected to Discord Vault Guild`;
@@ -152,13 +150,13 @@ const App = () => {
       <header className="App-header">
         <button
           className={`Button ${
-            account && account === connectedAccount 
+            address && address === connectedAccount 
               ? ""
               : "Button-active"
           }`}
           onClick={() => {
             if (!socket) return;
-            socket.emit("account", { account, userId });
+            socket.emit("account", { account: address, userId });
           }}
         >
           <img src={discord} alt="discord icon"></img>
@@ -171,6 +169,6 @@ const App = () => {
       </header>
     </div>
   );
-};
+});
 
 export default App;

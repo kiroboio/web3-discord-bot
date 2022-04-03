@@ -119,8 +119,8 @@ export class Bot {
 
     const prevChoices = withPrevChoices
       ? command.options[0]?.choices?.map(
-          (choice) => [choice.name, choice.value] as [string, string]
-        )
+        (choice) => [choice.name, choice.value] as [string, string]
+      )
       : [];
     const currentChoices = values.map(
       (choice) => [choice.name, choice.value] as [string, string]
@@ -144,17 +144,17 @@ export class Bot {
   };
 
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
-    
+
     await Promise.all(
       guilds.map(async (guildId) => {
         const users = this.client.guilds.cache.get(guildId)?.members.cache.values()
-        if(!users) return;
+        if (!users) return;
         for (const user of users) {
           const dbUser = (await this.guilds[guildId]?.usersDb.get(user.id)) as
             | { wallet: string; vault?: string }
             | undefined;
           if (!dbUser) continue;
-            
+
           this.createUser({
             userId: user.id,
             guildId,
@@ -343,6 +343,10 @@ export class Bot {
         if (!(await this.isUserExist(interaction))) return;
         await this.sendKiro(interaction);
         break;
+      case Commands.SendKiroSafe:
+        if (!(await this.isUserExist(interaction))) return;
+        await this.sendKiroSafe(interaction);
+        break;
     }
   };
 
@@ -466,18 +470,18 @@ export class Bot {
     });
   };
 
-  private getGuildUser = ({ id, guildId  }: { id: string, guildId?: string | null }) => {
-    if(!guildId) return undefined;
+  private getGuildUser = ({ id, guildId }: { id: string, guildId?: string | null }) => {
+    if (!guildId) return undefined;
     return this.guilds[guildId]?.users[id]
   }
 
-  private deleteGuildUser = ({ id, guildId  }: { id: string, guildId?: string | null }) => {
-    if(guildId) delete this.guilds[guildId]?.users[id]
+  private deleteGuildUser = ({ id, guildId }: { id: string, guildId?: string | null }) => {
+    if (guildId) delete this.guilds[guildId]?.users[id]
   }
 
   private getMyVault = async (interaction: CommandInteraction<CacheType>) => {
     await interaction.deferReply();
-    if(!interaction.guildId) return;
+    if (!interaction.guildId) return;
 
     const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
     if (!user) {
@@ -503,7 +507,7 @@ export class Bot {
 
     if (!interaction.guildId) return;
     await this.guilds[interaction.guildId]?.usersDb.delete(interaction.user.id);
- 
+
     user?.removeAllListeners();
     await this.roles.deleteUserRoles({
       userId: interaction.user.id,
@@ -614,48 +618,148 @@ export class Bot {
       });
 
 
-        if (!dbUserFrom.vault) {
-          return interaction.reply("Vault not found");
-        }
+    if (!dbUserFrom.vault) {
+      return interaction.reply("Vault not found");
+    }
 
-        const userFromAddress = fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet
-        const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
-        if(!userToAddress) {
-          return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
-        }
+    const userFromAddress = fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet
+    const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
+    if (!userToAddress) {
+      return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
+    }
 
-        
-        if (!user?.socket) {
-          return this.connect(interaction);
-        } else {
-          const message = await interaction.channel?.send(`${userTo.toString()}`)
-          
-          user?.emitSendKiro({
-            addressTo: userToAddress,
-            amount: String(amount),
-            chainId: String(this.chainId),
-            channelId: interaction.channelId,
-            type: fromWalletType,
-            url: message?.url,
-          });
-          
-          const reply = await user?.getSendTrxMessage({
-            userToId: userTo.id,
-            symbol: "KIRO",
-            chainId: this.chainId,
-            amount: String(amount),
-            addressTo: userToAddress,
-            addressFrom: userFromAddress,
-          });
-          
-          if (reply)  {
-            return interaction.reply(reply);    
-          }
 
-          
-          return interaction.reply("Transaction failed");
-          
-        }
+    if (!user?.socket) {
+      return this.connect(interaction);
+    } else {
+      const message = await interaction.channel?.send(`${userTo.toString()}`)
+
+      user?.emitSendKiro({
+        addressTo: userToAddress,
+        amount: String(amount),
+        chainId: String(this.chainId),
+        channelId: interaction.channelId,
+        type: fromWalletType,
+        url: message?.url,
+      });
+
+      const reply = await user?.getSendTrxMessage({
+        userToId: userTo.id,
+        symbol: "KIRO",
+        chainId: this.chainId,
+        amount: String(amount),
+        addressTo: userToAddress,
+        addressFrom: userFromAddress,
+      });
+
+      if (reply) {
+        return interaction.reply(reply);
+      }
+
+
+      return interaction.reply("Transaction failed");
+
+    }
+  };
+
+  private sendKiroSafe = async (interaction: CommandInteraction<CacheType>) => {
+    const userTo = interaction.options.getUser("user-name");
+    const passcode = interaction.options.getString("passcode");
+    if (!passcode) {
+      return interaction.reply({
+        content: `passcode not found`,
+        ephemeral: true,
+      });
+    }
+    if (!userTo) {
+      return interaction.reply({
+        content: `user not found`,
+        ephemeral: true,
+      });
+    }
+
+    const guildId = interaction.guild?.id;
+    if (!guildId)
+      return interaction.reply({
+        content: "failed to fetch guild id",
+        ephemeral: true,
+      });
+
+    const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
+      interaction.user.id
+    ) as DbUser
+    const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
+      userTo.id
+    )) as DbUser;
+    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    if (!dbUserTo) {
+      return interaction.reply({
+        content: `${userTo.toString()} ${interaction.user.username} sends you KIRO but you not connected with web3 account.`,
+      });
+    }
+
+    const amount = interaction.options.getInteger("amount");
+    if (!amount)
+      return interaction.reply({ content: "amount required", ephemeral: true });
+
+    const fromWalletType = interaction.options.getString("from-wallet-type") as
+      | "wallet"
+      | "vault";
+
+    const toWalletType = interaction.options.getString("to-wallet-type") as
+      | "wallet"
+      | "vault";
+
+    if (!fromWalletType || !toWalletType)
+      return interaction.reply({
+        content: "wallet type required",
+        ephemeral: true,
+      });
+
+
+    if (!dbUserFrom.vault) {
+      return interaction.reply("Vault not found");
+    }
+
+    const userFromAddress = fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet
+    const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
+    if (!userToAddress) {
+      return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
+    }
+
+
+    if (!user?.socket) {
+      return this.connect(interaction);
+    } else {
+      const message = await interaction.channel?.send(`${userTo.toString()}`)
+
+      user?.emitSendKiroSafe({
+        addressTo: userToAddress,
+        amount: String(amount),
+        chainId: String(this.chainId),
+        channelId: interaction.channelId,
+        type: fromWalletType,
+        passcode,
+        url: message?.url,
+      });
+
+      const reply = await user?.getSendTrxMessage({
+        userToId: userTo.id,
+        symbol: "KIRO",
+        chainId: this.chainId,
+        amount: String(amount),
+        addressTo: userToAddress,
+        addressFrom: userFromAddress,
+      });
+
+      if (reply) {
+        return interaction.reply(reply);
+      }
+
+
+      return interaction.reply("Transaction failed");
+
+    }
   };
 
   public getNfts = async ({
@@ -742,10 +846,10 @@ export class Bot {
   };
 
   public handleChainChange = async ({ guildId }: { guildId?: string | null }) => {
-    if(!guildId) return;
+    if (!guildId) return;
 
     const users = this.guilds[guildId]?.users
-    if(!users) return
+    if (!users) return
     for (const user of Object.values(users)) {
       if (!user) continue;
 
@@ -760,11 +864,11 @@ export class Bot {
     }
   };
 
-  public subscribeUsers = ({ guildId }:{ guildId: string }) => {
+  public subscribeUsers = ({ guildId }: { guildId: string }) => {
     Web3Subscriber.subscribeOnNewBlock({
       callback: async () => {
         const users = this.guilds[guildId]?.users
-        if(!users) return
+        if (!users) return
         for (const user of Object.values(users)) {
           if (!user) continue;
 

@@ -15,6 +15,7 @@ export enum Commands {
   DeleteRole = "delete-role",
   AddRole = "add-role",
   SendKiro = "send-kiro",
+  SendKiroSafe = "send-kiro-safe",
 }
 
 export const adminOnlyCommands = [
@@ -174,9 +175,43 @@ export const getCommands = ({
         .setName("amount")
         .setDescription("Amount of Kiro to send")
         .setRequired(true),
-      )
+      ),
       
-
+      new SlashCommandBuilder()
+      .setName(Commands.SendKiroSafe)
+      .setDescription("Kiro Safe Transfer")
+      .addStringOption((option) =>
+        option
+          .setName("from-wallet-type")
+          .setDescription("Wallet to send from")
+          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .setRequired(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("to-wallet-type")
+          .setDescription("Wallet to send to")
+          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .setRequired(true),
+      )
+      .addUserOption((option) => 
+        option
+          .setName("user-name")
+          .setDescription("Connected user to send Kiro to")
+          .setRequired(true),
+      )
+      .addIntegerOption((option) => 
+        option
+        .setName("amount")
+        .setDescription("Amount of Kiro to send")
+        .setRequired(true),
+      )
+      .addStringOption((option) => 
+      option
+      .setName("passcode")
+      .setDescription("Passcode to receive Kiro")
+      .setRequired(true),
+    )
     // new SlashCommandBuilder()
     //   .setName(Commands.GetWalletNfts)
     //   .setDescription("Get your wallets nfts (4 images max)."),
