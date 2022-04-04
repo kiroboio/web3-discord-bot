@@ -24,7 +24,7 @@ import { VAULT_URL, MONGO_URL, BOT_NAME } from "../constants";
 import { Web3Subscriber } from "../../client/src/Web3/Web3Subscriber";
 
 import { Guild } from "./Guild";
-import Web3 from "web3"
+import Web3 from "web3";
 import { Vault, Web3Vault } from "../../index";
 config();
 
@@ -33,7 +33,6 @@ const RPC_URLS = {
   "1": `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_KEY}`,
   "4": `wss://rinkeby.infura.io/ws/v3/${process.env.INFURA_KEY}`,
 };
-
 
 type IO = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
 type IoSocket = Socket<
@@ -86,13 +85,13 @@ export class Bot {
     this.io = io;
     this.roles = new Roles({ client });
     this.permissions = new Permissions({ client, roles: this.roles });
-    this.setWeb3Provider({ chainId: this.chainId })
+    this.setWeb3Provider({ chainId: this.chainId });
   }
 
   private setWeb3Provider = ({ chainId }: { chainId: 1 | 4 }) => {
-    const provider = new Web3.providers.WebsocketProvider(RPC_URLS[chainId])
-    Web3Vault.setProvider(provider)
-  }
+    const provider = new Web3.providers.WebsocketProvider(RPC_URLS[chainId]);
+    Web3Vault.setProvider(provider);
+  };
 
   public static setSubCommands = async ({
     commandName,
@@ -119,8 +118,8 @@ export class Bot {
 
     const prevChoices = withPrevChoices
       ? command.options[0]?.choices?.map(
-        (choice) => [choice.name, choice.value] as [string, string]
-      )
+          (choice) => [choice.name, choice.value] as [string, string]
+        )
       : [];
     const currentChoices = values.map(
       (choice) => [choice.name, choice.value] as [string, string]
@@ -144,10 +143,11 @@ export class Bot {
   };
 
   public setConnectedUsers = async ({ guilds }: { guilds: string[] }) => {
-
     await Promise.all(
       guilds.map(async (guildId) => {
-        const users = this.client.guilds.cache.get(guildId)?.members.cache.values()
+        const users = this.client.guilds.cache
+          .get(guildId)
+          ?.members.cache.values();
         if (!users) return;
         for (const user of users) {
           const dbUser = (await this.guilds[guildId]?.usersDb.get(user.id)) as
@@ -181,9 +181,12 @@ export class Bot {
         await channel.delete();
       }
     }
+
+    
     const channel = await guild.channels
       .create(`${BOT_NAME}-config`, {
         reason: `Config for ${BOT_NAME}`,
+        permissionOverwrites: [{ deny: DiscordPermissions.FLAGS.SEND_MESSAGES, id: guild.roles.everyone }]
       })
       .catch(console.error);
 
@@ -356,7 +359,7 @@ export class Bot {
       interaction.user.id
     );
     if (!user) {
-      this.connect(interaction)
+      this.connect(interaction);
       return false;
     }
 
@@ -396,7 +399,7 @@ export class Bot {
     const logoAttachment = UI.getMessageImageAttachment({
       imageName: "kirogo",
     });
-    const connectMessage = UI.getMessageEmbedWith({
+    const helpMessage = UI.getMessageEmbedWith({
       thumbnail: "attachment://vault.png",
       fields,
       author: {
@@ -407,7 +410,7 @@ export class Bot {
     });
 
     interaction.reply({
-      embeds: [connectMessage],
+      embeds: [helpMessage],
       files: [attachment, logoAttachment],
       ephemeral: true,
     });
@@ -445,9 +448,9 @@ export class Bot {
       "chain-name"
     ) as "1" | "4" | null;
 
-    const chainIdNum = Number(chainId) as 1 | 4
+    const chainIdNum = Number(chainId) as 1 | 4;
     this.chainId = chainId ? chainIdNum : 1;
-    this.setWeb3Provider({ chainId: chainIdNum })
+    this.setWeb3Provider({ chainId: chainIdNum });
 
     await this.handleChainChange({ guildId: interaction.guildId });
 
@@ -470,22 +473,37 @@ export class Bot {
     });
   };
 
-  private getGuildUser = ({ id, guildId }: { id: string, guildId?: string | null }) => {
+  private getGuildUser = ({
+    id,
+    guildId,
+  }: {
+    id: string;
+    guildId?: string | null;
+  }) => {
     if (!guildId) return undefined;
-    return this.guilds[guildId]?.users[id]
-  }
+    return this.guilds[guildId]?.users[id];
+  };
 
-  private deleteGuildUser = ({ id, guildId }: { id: string, guildId?: string | null }) => {
-    if (guildId) delete this.guilds[guildId]?.users[id]
-  }
+  private deleteGuildUser = ({
+    id,
+    guildId,
+  }: {
+    id: string;
+    guildId?: string | null;
+  }) => {
+    if (guildId) delete this.guilds[guildId]?.users[id];
+  };
 
   private getMyVault = async (interaction: CommandInteraction<CacheType>) => {
     await interaction.deferReply();
     if (!interaction.guildId) return;
 
-    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
     if (!user) {
-      return this.connect(interaction)
+      return this.connect(interaction);
     }
 
     const message = await user.getVaultMessage({
@@ -499,7 +517,10 @@ export class Bot {
   };
 
   private disconnect = async (interaction: CommandInteraction<CacheType>) => {
-    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
     if (!user) {
       interaction.reply("not connected");
       return;
@@ -514,7 +535,10 @@ export class Bot {
       guildId: interaction.guildId,
     });
 
-    this.deleteGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    this.deleteGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
     interaction.reply({ content: "disconnected", ephemeral: true });
   };
   private addRole = async (interaction: CommandInteraction<CacheType>) => {
@@ -586,16 +610,21 @@ export class Bot {
         ephemeral: true,
       });
 
-    const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
+    const dbUserFrom = (await this.guilds[guildId]?.usersDb.get(
       interaction.user.id
-    ) as DbUser
+    )) as DbUser;
     const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
       userTo.id
     )) as DbUser;
-    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
     if (!dbUserTo) {
       return interaction.reply({
-        content: `${userTo.toString()} ${interaction.user.username} sends you KIRO but you not connected with web3 account.`,
+        content: `${userTo.toString()} ${
+          interaction.user.username
+        } sends you KIRO but you not connected with web3 account.`,
       });
     }
 
@@ -617,22 +646,24 @@ export class Bot {
         ephemeral: true,
       });
 
-
     if (!dbUserFrom.vault) {
       return interaction.reply("Vault not found");
     }
 
-    const userFromAddress = fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet
-    const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
+    const userFromAddress =
+      fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet;
+    const userToAddress =
+      toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet;
     if (!userToAddress) {
-      return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
+      return interaction.reply(
+        `${userTo.username}'s web3 ${toWalletType} address not found`
+      );
     }
-
 
     if (!user?.socket) {
       return this.connect(interaction);
     } else {
-      const message = await interaction.channel?.send(`${userTo.toString()}`)
+      const message = await interaction.channel?.send(`${userTo.toString()}`);
 
       user?.emitSendKiro({
         addressTo: userToAddress,
@@ -656,9 +687,7 @@ export class Bot {
         return interaction.reply(reply);
       }
 
-
       return interaction.reply("Transaction failed");
-
     }
   };
 
@@ -685,16 +714,21 @@ export class Bot {
         ephemeral: true,
       });
 
-    const dbUserFrom = await this.guilds[guildId]?.usersDb.get(
+    const dbUserFrom = (await this.guilds[guildId]?.usersDb.get(
       interaction.user.id
-    ) as DbUser
+    )) as DbUser;
     const dbUserTo = (await this.guilds[guildId]?.usersDb.get(
       userTo.id
     )) as DbUser;
-    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
     if (!dbUserTo) {
       return interaction.reply({
-        content: `${userTo.toString()} ${interaction.user.username} sends you KIRO but you not connected with web3 account.`,
+        content: `${userTo.toString()} ${
+          interaction.user.username
+        } sends you KIRO but you not connected with web3 account.`,
       });
     }
 
@@ -716,22 +750,24 @@ export class Bot {
         ephemeral: true,
       });
 
-
     if (!dbUserFrom.vault) {
       return interaction.reply("Vault not found");
     }
 
-    const userFromAddress = fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet
-    const userToAddress = toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet
+    const userFromAddress =
+      fromWalletType === "vault" ? dbUserFrom.vault : dbUserFrom.wallet;
+    const userToAddress =
+      toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet;
     if (!userToAddress) {
-      return interaction.reply(`${userTo.username}'s web3 ${toWalletType} address not found`);
+      return interaction.reply(
+        `${userTo.username}'s web3 ${toWalletType} address not found`
+      );
     }
-
 
     if (!user?.socket) {
       return this.connect(interaction);
     } else {
-      const message = await interaction.channel?.send(`${userTo.toString()}`)
+      const message = await interaction.channel?.send(`${userTo.toString()}`);
 
       user?.emitSendKiroSafe({
         addressTo: userToAddress,
@@ -756,9 +792,7 @@ export class Bot {
         return interaction.reply(reply);
       }
 
-
       return interaction.reply("Transaction failed");
-
     }
   };
 
@@ -769,14 +803,17 @@ export class Bot {
     interaction: CommandInteraction<CacheType>;
     type: "Vault" | "Wallet";
   }) => {
-    const user = this.getGuildUser({ guildId: interaction.guildId, id: interaction.user.id });
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
     if (!user) {
       interaction.editReply({ content: "not connected" });
     }
     const nftsEmbeds = await user?.getNftsEmbeds({
       interaction,
       type,
-      chainId: this.chainId
+      chainId: this.chainId,
     });
 
     return nftsEmbeds;
@@ -806,7 +843,7 @@ export class Bot {
 
       user?.startAccountListener({
         socket,
-        channelId: interaction.channelId,
+        interaction,
         chainId: this.chainId,
       });
     };
@@ -845,11 +882,15 @@ export class Bot {
     return user;
   };
 
-  public handleChainChange = async ({ guildId }: { guildId?: string | null }) => {
+  public handleChainChange = async ({
+    guildId,
+  }: {
+    guildId?: string | null;
+  }) => {
     if (!guildId) return;
 
-    const users = this.guilds[guildId]?.users
-    if (!users) return
+    const users = this.guilds[guildId]?.users;
+    if (!users) return;
     for (const user of Object.values(users)) {
       if (!user) continue;
 
@@ -867,8 +908,8 @@ export class Bot {
   public subscribeUsers = ({ guildId }: { guildId: string }) => {
     Web3Subscriber.subscribeOnNewBlock({
       callback: async () => {
-        const users = this.guilds[guildId]?.users
-        if (!users) return
+        const users = this.guilds[guildId]?.users;
+        if (!users) return;
         for (const user of Object.values(users)) {
           if (!user) continue;
 

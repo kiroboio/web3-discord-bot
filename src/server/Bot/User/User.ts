@@ -1,6 +1,8 @@
 import {
+  CacheType,
   Client,
   ColorResolvable,
+  CommandInteraction,
   EmbedFieldData,
   EmbedFooterData,
   MessageAttachment,
@@ -80,11 +82,11 @@ export class User extends NFTs {
 
   public startAccountListener = ({
     socket,
-    channelId,
+    interaction,
     chainId,
   }: {
     socket: IoSocket;
-    channelId: string;
+    interaction: CommandInteraction<CacheType>;
     chainId: 1 | 4;
   }) => {
     this.socket = socket;
@@ -95,7 +97,7 @@ export class User extends NFTs {
       account: string;
       userId: string;
     }) => {
-      this?.handleAccountChange({ account, userId, channelId, chainId });
+      this?.handleAccountChange({ account, userId, interaction, chainId });
       socket.emit("connectedAccount", account);
     };
     socket.on("account", listener);
@@ -234,12 +236,12 @@ export class User extends NFTs {
     account,
     userId,
     chainId,
-    channelId,
+    interaction,
   }: {
     account: string;
     userId: string;
     chainId: 1 | 4;
-    channelId?: string;
+    interaction?: CommandInteraction<CacheType>;
   }) => {
     if (userId !== this.userId) return;
     if (!account) return;
@@ -262,12 +264,13 @@ export class User extends NFTs {
     });
 
     const message = await this.getVaultMessage({ chainId });
-    if (message && channelId) {
-      this.sendMessage({
+    if (message && interaction) {
+      interaction.followUp({
         embeds: message.embeds,
         files: message.files,
-        channelId,
-      });
+        ephemeral: true,
+      })
+      
     }
     await this.updateUserRoles({ totalBalance: balance.total });
   };
