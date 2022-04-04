@@ -18,6 +18,11 @@ export enum Commands {
   SendKiroSafe = "send-kiro-safe",
 }
 
+export enum WalletType {
+  Wallet = 'My Connected Wallet',
+  Vault = 'My Vault',
+}
+
 export const adminOnlyCommands = [
   Commands.SetChain,
   Commands.AddRole,
@@ -154,14 +159,14 @@ export const getCommands = ({
         option
           .setName("from-wallet-type")
           .setDescription("Wallet to send from")
-          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addStringOption((option) =>
         option
           .setName("to-wallet-type")
           .setDescription("Wallet to send to")
-          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addUserOption((option) => 
@@ -184,14 +189,14 @@ export const getCommands = ({
         option
           .setName("from-wallet-type")
           .setDescription("Wallet to send from")
-          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addStringOption((option) =>
         option
           .setName("to-wallet-type")
           .setDescription("Wallet to send to")
-          .addChoices([["Vault", "vault"], ["Wallet", "wallet"]])
+          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addUserOption((option) => 
