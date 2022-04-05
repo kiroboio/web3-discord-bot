@@ -15,12 +15,18 @@ export enum Commands {
   DeleteRole = "delete-role",
   AddRole = "add-role",
   SendKiro = "send-kiro",
-  SendKiroSafe = "send-kiro-safe",
+  SendEthSafe = "send-eth-safe",
+  GetTransactionsInTransit = "get-my-transactions-in-transit",
 }
 
-export enum WalletType {
-  Wallet = 'My Connected Wallet',
-  Vault = 'My Vault',
+export enum FromWalletType {
+  Wallet = 'From My Connected Wallet',
+  Vault = 'From My Vault',
+}
+
+export enum ToWalletType {
+  Wallet = 'To Connected Wallet',
+  Vault = 'To Vault',
 }
 
 export const adminOnlyCommands = [
@@ -159,14 +165,7 @@ export const getCommands = ({
         option
           .setName("from-wallet-type")
           .setDescription("Wallet to send from")
-          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
-          .setRequired(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("to-wallet-type")
-          .setDescription("Wallet to send to")
-          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
+          .addChoices([[FromWalletType.Vault, "vault"], [FromWalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addUserOption((option) => 
@@ -175,7 +174,14 @@ export const getCommands = ({
           .setDescription("Connected user to send Kiro to")
           .setRequired(true),
       )
-      .addIntegerOption((option) => 
+      .addStringOption((option) =>
+        option
+          .setName("to-wallet-type")
+          .setDescription("Wallet to send to")
+          .addChoices([[ToWalletType.Vault, "vault"], [ToWalletType.Wallet, "wallet"]])
+          .setRequired(true),
+      )
+      .addNumberOption((option) => 
         option
         .setName("amount")
         .setDescription("Amount of Kiro to send")
@@ -183,39 +189,48 @@ export const getCommands = ({
       ),
       
       new SlashCommandBuilder()
-      .setName(Commands.SendKiroSafe)
-      .setDescription("Kiro Safe Transfer")
+      .setName(Commands.SendEthSafe)
+      .setDescription("Eth Safe Transfer")
       .addStringOption((option) =>
         option
           .setName("from-wallet-type")
           .setDescription("Wallet to send from")
-          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
+          .addChoices([[FromWalletType.Vault, "vault"], [FromWalletType.Wallet, "wallet"]])
+          .setRequired(true),
+      )
+      .addUserOption((option) => 
+        option
+          .setName("user-name")
+          .setDescription("Connected user to send Eth to")
           .setRequired(true),
       )
       .addStringOption((option) =>
         option
           .setName("to-wallet-type")
           .setDescription("Wallet to send to")
-          .addChoices([[WalletType.Vault, "vault"], [WalletType.Wallet, "wallet"]])
+          .addChoices([[ToWalletType.Vault, "vault"], [ToWalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
-      .addUserOption((option) => 
-        option
-          .setName("user-name")
-          .setDescription("Connected user to send Kiro to")
-          .setRequired(true),
-      )
-      .addIntegerOption((option) => 
+      .addNumberOption((option) => 
         option
         .setName("amount")
-        .setDescription("Amount of Kiro to send")
+        .setDescription("Amount of Eth to send")
         .setRequired(true),
       )
       .addStringOption((option) => 
       option
       .setName("passcode")
-      .setDescription("Passcode to receive Kiro")
+      .setDescription("Passcode to receive Eth")
       .setRequired(true),
+    ),
+    new SlashCommandBuilder()
+    .setName(Commands.GetTransactionsInTransit)
+    .setDescription("Get my current transactions")
+    .addStringOption((option) =>
+      option
+        .setName("transactions-type")
+        .setDescription("Transactions type")
+        .addChoices([["Incoming", "incoming"], ["Outgoing", "outgoing"]])
     )
     // new SlashCommandBuilder()
     //   .setName(Commands.GetWalletNfts)

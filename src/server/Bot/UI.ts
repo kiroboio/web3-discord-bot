@@ -8,6 +8,7 @@ import {
   EmbedAuthorData,
   EmbedFooterData,
   EmbedFieldData,
+  
 } from "discord.js";
 import path from "path";
 import { COLORS, URL, URL_METAMASK } from "../constants";
@@ -69,6 +70,20 @@ export class UI {
     return embed;
   };
 
+  public static getButtonsWithId = (
+    params: {
+      label: string;
+      customId: string;
+      style?: MessageButtonStyleResolvable;
+    }[]
+  ) => {
+    return new MessageActionRow().addComponents(
+      params.map((param) =>
+        new MessageButton().setLabel(param.label).setCustomId(param.customId).setStyle("PRIMARY")
+      )
+    );
+  };
+
   public static getButton = ({
     label,
     url,
@@ -77,7 +92,7 @@ export class UI {
     url: string;
     style?: MessageButtonStyleResolvable;
   }) => {
-    const button = new MessageButton().setLabel(label).setStyle("LINK")
+    const button = new MessageButton().setLabel(label).setStyle("LINK");
 
     if (url) button.setURL(url);
 
@@ -95,13 +110,12 @@ export class UI {
     secondLabel: string;
     secondUrl: string;
   }) => {
-
     return new MessageActionRow().addComponents([
       new MessageButton().setStyle("LINK").setURL(url).setLabel(label),
       new MessageButton()
         .setStyle("LINK")
         .setURL(secondUrl)
-        .setLabel(secondLabel)
+        .setLabel(secondLabel),
     ]);
   };
 
@@ -172,11 +186,18 @@ export class UI {
   }) => {
     const embed = new MessageEmbed().setTitle(`Connect to metamask account`);
 
-    const { desktopLink, mobileLink } = UI.getConnectUrl({ token, userId })
+    const { desktopLink, mobileLink } = UI.getConnectUrl({ token, userId });
     return {
       embeds: [embed],
       ephemeral: true,
-      components: [this.getUrlButtons({ label: "Chrome App", url: desktopLink, secondLabel: "Metamask App", secondUrl: mobileLink  })],
+      components: [
+        this.getUrlButtons({
+          label: "Chrome App",
+          url: desktopLink,
+          secondLabel: "Metamask App",
+          secondUrl: mobileLink,
+        }),
+      ],
     };
   };
 }

@@ -108,24 +108,147 @@ export class User extends NFTs {
 
     socket.on(
       "transactionSendSuccess",
-      ({ trxHash, channelId, url }: { trxHash: string; channelId: string; url?:string }) => {
-        const channel = this.client.channels.cache.get(channelId) as TextChannel
+      ({
+        trxHash,
+        channelId,
+        url,
+      }: {
+        trxHash: string;
+        channelId: string;
+        url?: string;
+      }) => {
+        const channel = this.client.channels.cache.get(
+          channelId
+        ) as TextChannel;
 
-        const embed = UI.getMessageEmbedWith({ title:`:tada: Transaction sent successfully`, url, fields: [{ name: 'Hash', value: trxHash }] })
+        const embed = UI.getMessageEmbedWith({
+          title: `:tada: Transaction sent successfully`,
+          url,
+          fields: [{ name: "Hash", value: trxHash }],
+        });
         channel?.send({ embeds: [embed] });
       }
     );
 
     socket.on(
       "transactionSendFailed",
-      ({ error, channelId, url }: { error: string; channelId: string; url?:string }) => {
-        const channel = this.client.channels.cache.get(channelId) as TextChannel
+      ({
+        error,
+        channelId,
+        url,
+      }: {
+        error: string;
+        channelId: string;
+        url?: string;
+      }) => {
+        const channel = this.client.channels.cache.get(
+          channelId
+        ) as TextChannel;
 
-        const embed = UI.getMessageEmbedWith({ title:`:face_with_symbols_over_mouth: Transaction failed`, color: "RED", url, fields: [{ name: 'Error', value: error }] })
+        const embed = UI.getMessageEmbedWith({
+          title: `:face_with_symbols_over_mouth: Transaction failed`,
+          color: "RED",
+          url,
+          fields: [{ name: "Error", value: error }],
+        });
         channel?.send({ embeds: [embed] });
       }
     );
+
+    socket.on(
+      "deposits",
+      ({ deposits, channelId }: {
+        deposits: {
+          id: string;
+          to: string;
+        }[];
+        channelId: string;
+      }) => {
+        console.log({ deposits, chainId })
+        const depositButtons = deposits.map((deposit) => ({
+          label: `UNDO transfer to ${this.shortenAddress(deposit.to)}`,
+          customId: `deposit:${deposit.id}`,
+        }));
+
+        const channel = this.client.channels.cache.get(
+          channelId
+        ) as TextChannel;
+
+        const embed = UI.getMessageEmbedWith({
+          title: `Deposits`,
+        });
+
+        depositButtons.forEach((_button, i) => {
+          const index = i + 1;
+          if(index % 5 === 0 || index === depositButtons.length) {
+            const gap = index % 5 === 0 ? 5 : index % 5;
+            channel?.send({ embeds: [embed], components: [UI.getButtonsWithId(depositButtons.slice(index - gap, index))] })
+          }
+        });
+      }
+    );
+
+    socket.on(
+      "collects",
+      ({ collects, channelId }: {
+        collects: {
+          id: string;
+          from: string;
+        }[];
+        channelId: string;
+      }) => {
+        console.log({ collects, chainId })
+        const collectButtons = collects.map((collect) => ({
+          label: `Collect transfer from ${this.shortenAddress(collect.from)}`,
+          customId: `collect:${collect.id}`,
+        }));
+
+        const channel = this.client.channels.cache.get(
+          channelId
+        ) as TextChannel;
+        //const buttons = collectButtons.map(UI.getButtonsWithId);
+        const embed = UI.getMessageEmbedWith({
+          title: `Collects`,
+        });
+
+        collectButtons.forEach((_button, i) => {
+          const index = i + 1;
+          if(index % 5 === 0 || index === collectButtons.length) {
+            const gap = index % 5 === 0 ? 5 : index % 5;
+            channel?.send({ embeds: [embed], components: [UI.getButtonsWithId(collectButtons.slice(index - (gap < 5 ? gap + 1 : gap), index))] })
+          }
+        });
+      }
+    );
   };
+
+  public emitGetTransaction = ({ type, channelId }: { type: "DEPOSIT" | "COLLECT", channelId: string }) => {
+    if (!this.socket) return false;
+    console.log({ emitGetTransaction: type })
+    this.socket.emit("getTransactions", {
+      type,
+      channelId,
+    });
+    return true;
+  };
+
+  public undo = ({ id }: { id: string }) => {
+    if (!this.socket) return false;
+    this.socket.emit("retrieve", {
+      id,
+    });
+    return true;
+  };
+
+  public collect = ({ id, passcode }: { id: string, passcode: string }) => {
+    if (!this.socket) return false;
+    this.socket.emit("collect", {
+      id,
+      passcode
+    });
+    return true;
+  };
+
 
   public emitSendKiro = ({
     addressTo,
@@ -133,7 +256,7 @@ export class User extends NFTs {
     amount,
     channelId,
     type,
-    url
+    url,
   }: {
     chainId: string;
     amount: string;
@@ -149,19 +272,19 @@ export class User extends NFTs {
       amount,
       channelId,
       type,
-      url
+      url,
     });
     return true;
   };
 
-  public emitSendKiroSafe = ({
+  public emitSendEthSafe = ({
     addressTo,
     chainId,
     amount,
     channelId,
     type,
     passcode,
-    url
+    url,
   }: {
     chainId: string;
     amount: string;
@@ -183,6 +306,16 @@ export class User extends NFTs {
     });
     return true;
   };
+
+  private shortenAddress = (address?: string | null, length = 4): string => {
+    if (!address) return "";
+    if (address.length < length * 2 + 5) return address;
+  
+    const left = address.slice(0, length + 2);
+    const right = address.slice(address.length - length);
+    return `${left}...${right}`;
+  };
+  
 
   private getMessageToUserEmbeds = ({
     color = COLORS.primary,
@@ -269,8 +402,7 @@ export class User extends NFTs {
         embeds: message.embeds,
         files: message.files,
         ephemeral: true,
-      })
-      
+      });
     }
     await this.updateUserRoles({ totalBalance: balance.total });
   };

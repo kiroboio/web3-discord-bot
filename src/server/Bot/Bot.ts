@@ -182,11 +182,15 @@ export class Bot {
       }
     }
 
-    
     const channel = await guild.channels
       .create(`${BOT_NAME}-config`, {
         reason: `Config for ${BOT_NAME}`,
-        permissionOverwrites: [{ deny: DiscordPermissions.FLAGS.SEND_MESSAGES, id: guild.roles.everyone }]
+        permissionOverwrites: [
+          {
+            deny: DiscordPermissions.FLAGS.SEND_MESSAGES,
+            id: guild.roles.everyone,
+          },
+        ],
       })
       .catch(console.error);
 
@@ -306,6 +310,18 @@ export class Bot {
           await this.help(interaction);
           break;
       }
+
+      if (interaction.customId.includes("deposit:")) {
+        const id = interaction.customId.replace(`deposit:`, "");
+        console.log({ deposit: id });
+        await this.undo({ interaction, id });
+      }
+
+      if (interaction.customId.includes("collect:")) {
+        const id = interaction.customId.replace(`collect:`, "");
+        console.log({ collect: id });
+        await this.collect({ interaction, id });
+      }
     }
 
     if (!interaction.isCommand()) return;
@@ -346,9 +362,13 @@ export class Bot {
         if (!(await this.isUserExist(interaction))) return;
         await this.sendKiro(interaction);
         break;
-      case Commands.SendKiroSafe:
+      case Commands.SendEthSafe:
         if (!(await this.isUserExist(interaction))) return;
-        await this.sendKiroSafe(interaction);
+        await this.sendEthSafe(interaction);
+        break;
+      case Commands.GetTransactionsInTransit:
+        if (!(await this.isUserExist(interaction))) return;
+        await this.getTransactionsInTransit(interaction);
         break;
     }
   };
@@ -628,7 +648,7 @@ export class Bot {
       });
     }
 
-    const amount = interaction.options.getInteger("amount");
+    const amount = interaction.options.getNumber("amount");
     if (!amount)
       return interaction.reply({ content: "amount required", ephemeral: true });
 
@@ -691,7 +711,7 @@ export class Bot {
     }
   };
 
-  private sendKiroSafe = async (interaction: CommandInteraction<CacheType>) => {
+  private sendEthSafe = async (interaction: CommandInteraction<CacheType>) => {
     const userTo = interaction.options.getUser("user-name");
     const passcode = interaction.options.getString("passcode");
     if (!passcode) {
@@ -732,7 +752,7 @@ export class Bot {
       });
     }
 
-    const amount = interaction.options.getInteger("amount");
+    const amount = interaction.options.getNumber("amount");
     if (!amount)
       return interaction.reply({ content: "amount required", ephemeral: true });
 
@@ -769,7 +789,7 @@ export class Bot {
     } else {
       const message = await interaction.channel?.send(`${userTo.toString()}`);
 
-      user?.emitSendKiroSafe({
+      user?.emitSendEthSafe({
         addressTo: userToAddress,
         amount: String(amount),
         chainId: String(this.chainId),
@@ -795,6 +815,108 @@ export class Bot {
       return interaction.reply("Transaction failed");
     }
   };
+
+  private getTransactionsInTransit = async (
+    interaction: CommandInteraction<CacheType>
+  ) => {
+    const type = interaction.options.getString("transactions-type") as
+      | "incoming"
+      | "outgoing";
+
+    const guildId = interaction.guild?.id;
+    if (!guildId)
+      return interaction.reply({
+        content: "failed to fetch guild id",
+        ephemeral: true,
+      });
+
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
+
+    if (!user?.socket) {
+      return this.connect(interaction);
+    } else {
+      user?.emitGetTransaction({
+        type: type === "outgoing" ? "DEPOSIT" : "COLLECT",
+        channelId: interaction.channelId,
+      });
+
+      return interaction.reply("Fetching...");
+    }
+  };
+
+  private undo = async ({
+    interaction,
+    id,
+  }: {
+    interaction: CommandInteraction<CacheType>;
+    id: string;
+  }) => {
+    const guildId = interaction.guild?.id;
+    if (!guildId)
+      return interaction.reply({
+        content: "failed to fetch guild id",
+        ephemeral: true,
+      });
+
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
+
+    if (!user?.socket) {
+      return this.connect(interaction);
+    } else {
+      user?.undo({
+        id,
+      });
+
+      return interaction.reply("Confirm undo in metamask");
+    }
+  };
+
+  private collect = async ({
+    interaction,
+    id,
+  }: {
+    interaction: CommandInteraction<CacheType>;
+    id: string;
+  }) => {
+    const guildId = interaction.guild?.id;
+    if (!guildId)
+      return interaction.reply({
+        content: "failed to fetch guild id",
+        ephemeral: true,
+      });
+
+    const user = this.getGuildUser({
+      guildId: interaction.guildId,
+      id: interaction.user.id,
+    });
+
+    if (!user?.socket) {
+      return this.connect(interaction);
+    } else {
+      interaction.reply("set collect password").then(() => {
+        const filter = (m: any) => interaction.user.id === m.author.id;
+        const collector = interaction?.channel?.createMessageCollector({ filter, time: 30000, max: 1 });
+
+        if(!collector) return;
+
+        collector.on('collect', (m) => {
+          user.collect({ id, passcode: m.content })
+        });
+        
+        collector.on('end', (collected) => {
+          if(collected.size) return;
+          interaction.followUp(`No passcode was set`);
+        });
+      });
+    }
+  };
+
 
   public getNfts = async ({
     interaction,
