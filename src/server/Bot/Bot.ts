@@ -1015,6 +1015,7 @@ export class Bot {
               embeds: [
                 UI.getMessageEmbedWith({
                   title: `Collect request was sent`,
+                  url: "https://undo.kirobo.me/",
                 }),
               ],
             });
