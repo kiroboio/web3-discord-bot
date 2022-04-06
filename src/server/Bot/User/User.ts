@@ -394,10 +394,10 @@ export class User extends NFTs {
 
     const message = await this.getVaultMessage({ chainId });
     if (message && interaction) {
-      interaction.followUp({
+      const channel = this.client.channels.cache.get(interaction?.channelId) as TextChannel;
+      channel.send({
         embeds: message.embeds,
         files: message.files,
-        ephemeral: true,
       });
     }
     await this.updateUserRoles({ totalBalance: balance.total });
