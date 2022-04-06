@@ -50,6 +50,10 @@ const App = observer(() => {
     retrieve,
     collect,
   } = useAccount();
+
+  const [connecting, setConnecting] = useState<
+    boolean
+  >(false);
   const [connectedAccount, setConnectedAccount] = useState<
     string | undefined
   >();
@@ -84,6 +88,7 @@ const App = observer(() => {
 
     socket.on("connectedAccount", (connectedAccount) => {
       if (!connectedAccount) return;
+      setConnecting(false);
       setConnectedAccount(connectedAccount);
     });
 
@@ -246,15 +251,18 @@ const App = observer(() => {
     return `Your are connected to Discord Vault Guild`;
   };
 
+  const isButtonActive = address && address !== connectedAccount && !connecting
   return (
     <div className="App">
       <header className="App-header">
         <button
+        disabled={!isButtonActive}
           className={`Button ${
-            address && address === connectedAccount ? "" : "Button-active"
+            isButtonActive ? "Button-active" : ""
           }`}
           onClick={() => {
             if (!socket) return;
+            setConnecting(true);
             socket.emit("account", { account: address, userId });
           }}
         >
