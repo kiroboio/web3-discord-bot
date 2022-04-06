@@ -188,7 +188,7 @@ const App = observer(() => {
           return;
         deposits.push({
           id: trx.id,
-          to: trx.id,
+          to: trx.to,
         });
       });
 
