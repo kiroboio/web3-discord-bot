@@ -246,11 +246,12 @@ export class User extends NFTs {
   };
 
 
-  public emitSendKiro = ({
+  public emitSend = ({
     addressTo,
     chainId,
     amount,
     channelId,
+    currency,
     type,
     url,
   }: {
@@ -259,16 +260,18 @@ export class User extends NFTs {
     addressTo: string;
     channelId: string;
     type: "wallet" | "vault";
+    currency: string;
     url?: string;
   }) => {
     if (!this.socket) return false;
-    this.socket.emit("sendKiro", {
+    this.socket.emit("send", {
       addressTo,
       chainId,
       amount,
       channelId,
       type,
       url,
+      currency,
     });
     return true;
   };

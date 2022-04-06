@@ -8,6 +8,7 @@ type TrxParams = {
   addressTo: string;
   value: string;
   chainId: string;
+  currency: "ETH" | "KIRO";
   resolve: (trxHash: string) => void;
   reject: (error: string) => void;
 };
@@ -26,11 +27,12 @@ export class Vault {
     Vault.contract[address] = contract;
   };
 
-  public static sendWalletKiroTransaction = async ({
+  public static sendWalletTransaction = async ({
     address,
     addressTo,
     chainId,
     value,
+    currency,
     resolve,
     reject,
   }: TrxParams) => {
@@ -51,13 +53,28 @@ export class Vault {
       .toNumber();
 
     const trx: { hash: string | undefined } = { hash: undefined };
-    await kiroContract?.methods
-      .transfer(addressTo, valueInWei)
-      .send({ from: address, gas })
-      .on("transactionHash", (txHash: string) => {
-        trx.hash = txHash;
-      })
-      .on("error", (err: Error) => reject(err.message));
+
+    if (currency === "KIRO") {
+      await kiroContract?.methods
+        .transfer(addressTo, valueInWei)
+        .send({ from: address, gas })
+        .on("transactionHash", (txHash: string) => {
+          trx.hash = txHash;
+        })
+        .on("error", (err: Error) => reject(err.message));
+    } else {
+      await library.eth
+        .sendTransaction({
+          from: address,
+          gas,
+          value: valueInWei,
+          to: addressTo,
+        })
+        .on("transactionHash", (txHash: string) => {
+          trx.hash = txHash;
+        })
+        .on("error", (err: Error) => reject(err.message));
+    }
     if (!trx.hash) return reject("failed");
     const receipt = await library.eth.getTransactionReceipt(trx.hash);
 
@@ -66,11 +83,12 @@ export class Vault {
     }
   };
 
-  public static sendVaultKiroTransaction = async ({
+  public static sendVaultTransaction = async ({
     address,
     addressTo,
     chainId,
     value,
+    currency,
     resolve,
     reject,
   }: TrxParams) => {
@@ -90,21 +108,38 @@ export class Vault {
       .muln(1.2)
       .toNumber();
     const trx: { hash: string | undefined } = { hash: undefined };
-    await onChainWalletContract?.methods
-      .transfer20(tokenAddress, addressTo, valueInWei)
-      .send({ from: address, gas })
-      .on("transactionHash", async (txHash: string) => {
-        trx.hash = txHash;
-      })
-      .on("error", (err: Error) => {
-        reject(err.message);
-      });
-    if (!trx.hash) return reject("failed");
-    const receipt = await library?.eth?.getTransactionReceipt(trx.hash);
-    if (receipt) {
-      resolve(receipt.transactionHash);
-    }
-  };
+    if(currency === "KIRO") {
+      await onChainWalletContract?.methods
+        .transfer20(tokenAddress, addressTo, valueInWei)
+        .send({ from: address, gas })
+        .on("transactionHash", async (txHash: string) => {
+          trx.hash = txHash;
+        })
+        .on("error", (err: Error) => {
+          reject(err.message);
+        });
+    } else {
+      const sendEther = onChainWalletContract?.methods.sendEther(addressTo, valueInWei);
+      const data = sendEther.encodeABI();
+      await library.eth
+        .sendTransaction({
+          from: address,
+          gas,
+          value: valueInWei,
+          to: addressTo,
+          data
+        })
+        .on("transactionHash", (txHash: string) => {
+          trx.hash = txHash;
+        })
+        .on("error", (err: Error) => reject(err.message));
+    } 
+      if (!trx.hash) return reject("failed");
+      const receipt = await library?.eth?.getTransactionReceipt(trx.hash);
+      if (receipt) {
+        resolve(receipt.transactionHash);
+      }
+    };
 
   public static getKiroBalance = async ({
     address,

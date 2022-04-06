@@ -370,9 +370,9 @@ export class Bot {
       case Commands.DeleteRole:
         await this.deleteRole(interaction);
         break;
-      case Commands.SendKiro:
+      case Commands.Send:
         if (!(await this.isUserExist(interaction))) return;
-        await this.sendKiro(interaction);
+        await this.send(interaction);
         break;
       case Commands.SendEthSafe:
         if (!(await this.isUserExist(interaction))) return;
@@ -644,7 +644,7 @@ export class Bot {
       return interaction.reply({
         embeds: [
           UI.getMessageEmbedWith({
-            title: 'deleted',
+            title: "deleted",
           }),
         ],
         ephemeral: true,
@@ -662,7 +662,7 @@ export class Bot {
     }
   };
 
-  private sendKiro = async (interaction: CommandInteraction<CacheType>) => {
+  private send = async (interaction: CommandInteraction<CacheType>) => {
     const userTo = interaction.options.getUser("user-name");
     if (!userTo) {
       return interaction.reply({
@@ -678,6 +678,9 @@ export class Bot {
         ephemeral: true,
       });
 
+    const currency = interaction.options.getString("currency") as
+      | "ETH"
+      | "KIRO";
     const dbUserFrom = (await this.guilds[guildId]?.usersDb.get(
       interaction.user.id
     )) as DbUser;
@@ -694,7 +697,7 @@ export class Bot {
           UI.getMessageEmbedWith({
             title: `${userTo.toString()} ${
               interaction.user.username
-            } sends you KIRO but you not connected with web3 account.`,
+            } sends you ${currency} but you not connected with web3 account.`,
           }),
         ],
       });
@@ -734,9 +737,14 @@ export class Bot {
     const userToAddress =
       toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet;
     if (!userToAddress) {
-      return interaction.reply(
-        `${userTo.username}'s web3 ${toWalletType} address not found`
-      );
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: `${userTo.username}'s web3 ${toWalletType} address not found`,
+            color: "RED",
+          }),
+        ],
+      });
     }
 
     if (!user?.socket) {
@@ -744,18 +752,19 @@ export class Bot {
     } else {
       const message = await interaction.channel?.send(`${userTo.toString()}`);
 
-      user?.emitSendKiro({
+      user?.emitSend({
         addressTo: userToAddress,
         amount: String(amount),
         chainId: String(this.chainId),
         channelId: interaction.channelId,
         type: fromWalletType,
         url: message?.url,
+        currency,
       });
 
       const reply = await user?.getSendTrxMessage({
         userToId: userTo.id,
-        symbol: "KIRO",
+        symbol: currency,
         chainId: this.chainId,
         amount: String(amount),
         addressTo: userToAddress,
@@ -856,9 +865,14 @@ export class Bot {
     const userToAddress =
       toWalletType === "vault" ? dbUserTo.vault : dbUserTo.wallet;
     if (!userToAddress) {
-      return interaction.reply(
-        `${userTo.username}'s web3 ${toWalletType} address not found`
-      );
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: `${userTo.username}'s web3 ${toWalletType} address not found`,
+            color: "RED",
+          }),
+        ],
+      });
     }
 
     if (!user?.socket) {
@@ -878,7 +892,7 @@ export class Bot {
 
       const reply = await user?.getSendTrxMessage({
         userToId: userTo.id,
-        symbol: "KIRO",
+        symbol: "ETH",
         chainId: this.chainId,
         amount: String(amount),
         addressTo: userToAddress,
@@ -997,7 +1011,7 @@ export class Bot {
           embeds: [
             UI.getMessageEmbedWith({
               title: "Set passcode",
-              description: "To set passcode enter the message" 
+              description: "To set passcode enter the message",
             }),
           ],
         })

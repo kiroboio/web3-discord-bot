@@ -14,12 +14,13 @@ import {
 } from "@kiroboio/web3-react-safe-transfer";
 import { etherToWei } from "./Web3/utils";
 
-type SendKiroParams = {
+type SendParams = {
   addressTo: string;
   chainId: string;
   amount: string;
   channelId: string;
   type: "wallet" | "vault";
+  currency: "ETH" | "KIRO",
   url?: string;
   passcode?: string;
 };
@@ -56,8 +57,8 @@ const App = observer(() => {
     GetTransactionsParams | undefined
   >();
 
-  const [sendKiroParams, setSendKiroParams] = useState<
-    SendKiroParams | undefined
+  const [sendParams, setSendParams] = useState<
+  SendParams | undefined
   >();
   const [userId, setUserId] = useState<string | undefined>();
   const [socket, setSocket] = useState<Socket | undefined>();
@@ -86,8 +87,8 @@ const App = observer(() => {
       setConnectedAccount(connectedAccount);
     });
 
-    socket.on("sendKiro", (sendKiroParams: SendKiroParams) => {
-      setSendKiroParams(sendKiroParams);
+    socket.on("send", (sendParams: SendParams) => {
+      setSendParams(sendParams);
     });
 
     socket.on("getTransactions", (params: GetTransactionsParams) => {
@@ -116,22 +117,22 @@ const App = observer(() => {
   }, [socket]);
 
   useEffect(() => {
-    if (!sendKiroParams) return;
+    if (!sendParams) return;
     if (!address) return;
-    setChainId(Number(sendKiroParams.chainId));
+    setChainId(Number(sendParams.chainId));
 
-    if (sendKiroParams.passcode) {
+    if (sendParams.passcode) {
       deposit.run({
-        to: sendKiroParams.addressTo,
-        passcode: sendKiroParams.passcode,
-        value: etherToWei(sendKiroParams.amount),
+        to: sendParams.addressTo,
+        passcode: sendParams.passcode,
+        value: etherToWei(sendParams.amount),
       });
       return;
     }
-    const sendKiroAsync = async (sendParams: SendKiroParams) => {
+    const sendAsync = async (sendParams: SendParams) => {
       await Vault.setVaultContract({
         address,
-        chainId: Number(sendKiroParams.chainId) as 1 | 4,
+        chainId: Number(sendParams.chainId) as 1 | 4,
       });
 
       const params = {
@@ -139,6 +140,7 @@ const App = observer(() => {
         addressTo: sendParams.addressTo,
         chainId: sendParams.chainId,
         value: sendParams.amount,
+        currency: sendParams.currency,
         resolve: (trxHash: string) => {
           if (!socket) return;
           socket.emit("transactionSendSuccess", {
@@ -158,18 +160,18 @@ const App = observer(() => {
       };
       switch (sendParams.type) {
         case "vault":
-          await Vault.sendVaultKiroTransaction(params);
+          await Vault.sendVaultTransaction(params);
           break;
 
         case "wallet":
-          await Vault.sendWalletKiroTransaction(params);
+          await Vault.sendWalletTransaction(params);
           break;
       }
     };
 
-    sendKiroAsync(sendKiroParams);
-    setSendKiroParams(undefined);
-  }, [sendKiroParams, socket, address]);
+    sendAsync(sendParams);
+    setSendParams(undefined);
+  }, [sendParams, socket, address]);
 
   useEffect(() => {
     if (!getTransactionsParams) return;

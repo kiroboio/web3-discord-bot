@@ -14,7 +14,7 @@ export enum Commands {
   MyRole = "get-my-role",
   DeleteRole = "delete-role",
   AddRole = "add-role",
-  SendKiro = "send-kiro",
+  Send = "send",
   SendEthSafe = "send-eth-safe",
   GetTransactionsInTransit = "get-my-transactions-in-transit",
 }
@@ -159,8 +159,15 @@ export const getCommands = ({
       .setDefaultPermission(false),
 
     new SlashCommandBuilder()
-      .setName(Commands.SendKiro)
-      .setDescription("Send Kiro")
+      .setName(Commands.Send)
+      .setDescription("Send transaction to discord user connected wallet")
+      .addStringOption((option) =>
+        option
+          .setName("currency")
+          .setDescription("Currency to send")
+          .addChoices([["Eth", "ETH"], ["Kiro", "KIRO"]])
+          .setRequired(true),
+      )
       .addStringOption((option) =>
         option
           .setName("from-wallet-type")
@@ -231,6 +238,7 @@ export const getCommands = ({
         .setName("transactions-type")
         .setDescription("Transactions type")
         .addChoices([["Incoming", "incoming"], ["Outgoing", "outgoing"]])
+        .setRequired(true),
     )
     // new SlashCommandBuilder()
     //   .setName(Commands.GetWalletNfts)
