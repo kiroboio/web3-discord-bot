@@ -15,7 +15,7 @@ import { Vault } from "../../../client/src/Web3/Vault";
 import { config } from "dotenv";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import path from "path";
-import { COLORS, URL, VAULT_URL } from "../../constants";
+import { COLORS, VAULT_URL } from "../../constants";
 
 import { UI } from "../UI";
 import Keyv from "keyv";
