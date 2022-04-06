@@ -139,7 +139,7 @@ export class UI {
       new MessageButton()
         .setCustomId(secondCustomId)
         .setLabel(secondLabel)
-        .setStyle(secondStyle),
+        .setStyle(secondStyle)
     ]);
   };
 
@@ -166,13 +166,6 @@ export class UI {
   }) => {
     const desktopLink = `${URL}?token=${token}&userId=${userId}`;
     const mobileLink = `${URL_METAMASK}?token=${token}&userId=${userId}`;
-    // if (presence?.clientStatus?.desktop === "online") {
-    //   return desktopLink;
-    // }
-
-    // if (presence?.clientStatus?.mobile === "online") {
-    //   return mobileLink;
-    // }
 
     return { desktopLink, mobileLink };
   };
@@ -184,7 +177,7 @@ export class UI {
     token: string;
     userId: string;
   }) => {
-    const embed = new MessageEmbed().setTitle(`Connect to metamask account`);
+    const embed = new MessageEmbed().setTitle(`Connect to metamask account`).setDescription(`These links will expire in 2 minutes`);
 
     const { desktopLink, mobileLink } = UI.getConnectUrl({ token, userId });
     return {

@@ -157,22 +157,21 @@ export class User extends NFTs {
 
     socket.on(
       "deposits",
-      ({ deposits, channelId }: {
+      ({ deposits, userId }: {
         deposits: {
           id: string;
           to: string;
         }[];
-        channelId: string;
+        userId: string;
       }) => {
-        console.log({ deposits, chainId })
         const depositButtons = deposits.map((deposit) => ({
           label: `UNDO transfer to ${this.shortenAddress(deposit.to)}`,
-          customId: `deposit:${deposit.id}`,
+          customId: `guild:${this.guildId}_deposit:${deposit.id}`,
         }));
 
-        const channel = this.client.channels.cache.get(
-          channelId
-        ) as TextChannel;
+        const user = this.client.users.cache.get(
+          userId
+        );
 
         const embed = UI.getMessageEmbedWith({
           title: `Deposits`,
@@ -182,7 +181,7 @@ export class User extends NFTs {
           const index = i + 1;
           if(index % 5 === 0 || index === depositButtons.length) {
             const gap = index % 5 === 0 ? 5 : index % 5;
-            channel?.send({ embeds: [embed], components: [UI.getButtonsWithId(depositButtons.slice(index - gap, index))] })
+            user?.send({ embeds: [embed], components: [UI.getButtonsWithId(depositButtons.slice(index - gap, index))] })
           }
         });
       }
@@ -190,23 +189,21 @@ export class User extends NFTs {
 
     socket.on(
       "collects",
-      ({ collects, channelId }: {
+      ({ collects, userId }: {
         collects: {
           id: string;
           from: string;
         }[];
-        channelId: string;
+        userId: string;
       }) => {
-        console.log({ collects, chainId })
         const collectButtons = collects.map((collect) => ({
           label: `Collect transfer from ${this.shortenAddress(collect.from)}`,
-          customId: `collect:${collect.id}`,
+          customId: `guild:${this.guildId}_collect:${collect.id}`,
         }));
 
-        const channel = this.client.channels.cache.get(
-          channelId
-        ) as TextChannel;
-        //const buttons = collectButtons.map(UI.getButtonsWithId);
+        const user = this.client.users.cache.get(
+          userId
+        );
         const embed = UI.getMessageEmbedWith({
           title: `Collects`,
         });
@@ -215,19 +212,18 @@ export class User extends NFTs {
           const index = i + 1;
           if(index % 5 === 0 || index === collectButtons.length) {
             const gap = index % 5 === 0 ? 5 : index % 5;
-            channel?.send({ embeds: [embed], components: [UI.getButtonsWithId(collectButtons.slice(index - (gap < 5 ? gap + 1 : gap), index))] })
+            user?.send({ embeds: [embed], components: [UI.getButtonsWithId(collectButtons.slice(index - gap, index))] })
           }
         });
       }
     );
   };
 
-  public emitGetTransaction = ({ type, channelId }: { type: "DEPOSIT" | "COLLECT", channelId: string }) => {
+  public emitGetTransaction = ({ type, userId }: { type: "DEPOSIT" | "COLLECT", userId: string }) => {
     if (!this.socket) return false;
-    console.log({ emitGetTransaction: type })
     this.socket.emit("getTransactions", {
       type,
-      channelId,
+      userId,
     });
     return true;
   };

@@ -26,7 +26,7 @@ type SendKiroParams = {
 
 type GetTransactionsParams = {
   type: "DEPOSIT" | "COLLECT";
-  channelId: string;
+  userId: string;
 };
 
 const shortenAddress = (address?: string | null, length = 4): string => {
@@ -68,7 +68,6 @@ const App = observer(() => {
   const userIdParam = params.get("userId") as string;
 
   useEffect(() => {
-    console.log("rerender");
     const setProviderAsync = async () => {
       const metamaskProvider = (await detectEthereumProvider()) as provider;
       Web3Vault.setProvider(metamaskProvider);
@@ -104,7 +103,6 @@ const App = observer(() => {
     socket.on(
       "collect",
       ({ id, passcode }: { id: string; passcode: string }) => {
-        console.log({ id, passcode, }, "collect")
         collect.run({
           id,
           passcode,
@@ -194,7 +192,7 @@ const App = observer(() => {
 
       socket.emit("deposits", {
         deposits,
-        channelId: getTransactionsParams.channelId,
+        userId: getTransactionsParams.userId,
       });
     }
 
@@ -213,10 +211,9 @@ const App = observer(() => {
         });
       });
 
-      console.log({ emitCollects: collects, getTransactionsParams });
       socket.emit("collects", {
         collects,
-        channelId: getTransactionsParams.channelId,
+        userId: getTransactionsParams.userId,
       });
     }
 

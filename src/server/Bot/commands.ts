@@ -195,7 +195,7 @@ export const getCommands = ({
         option
           .setName("from-wallet-type")
           .setDescription("Wallet to send from")
-          .addChoices([[FromWalletType.Vault, "vault"], [FromWalletType.Wallet, "wallet"]])
+          .addChoices([[FromWalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addUserOption((option) => 
@@ -208,7 +208,7 @@ export const getCommands = ({
         option
           .setName("to-wallet-type")
           .setDescription("Wallet to send to")
-          .addChoices([[ToWalletType.Vault, "vault"], [ToWalletType.Wallet, "wallet"]])
+          .addChoices([[ToWalletType.Wallet, "wallet"]])
           .setRequired(true),
       )
       .addNumberOption((option) => 

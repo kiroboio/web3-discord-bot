@@ -312,15 +312,27 @@ export class Bot {
       }
 
       if (interaction.customId.includes("deposit:")) {
-        const id = interaction.customId.replace(`deposit:`, "");
-        console.log({ deposit: id });
-        await this.undo({ interaction, id });
+        const data = interaction.customId.split("_");
+
+        const guild = data[0];
+        const collect = data[1];
+
+        const guildId = guild.replace(`guild:`, "");
+        const id = collect.replace(`deposit:`, "");
+
+        await this.undo({ interaction, id, guildId });
       }
 
       if (interaction.customId.includes("collect:")) {
-        const id = interaction.customId.replace(`collect:`, "");
-        console.log({ collect: id });
-        await this.collect({ interaction, id });
+        const data = interaction.customId.split("_");
+
+        const guild = data[0];
+        const collect = data[1];
+
+        const guildId = guild.replace(`guild:`, "");
+        const id = collect.replace(`collect:`, "");
+
+        await this.collect({ interaction, id, guildId });
       }
     }
 
@@ -559,7 +571,14 @@ export class Bot {
       guildId: interaction.guildId,
       id: interaction.user.id,
     });
-    interaction.reply({ content: "disconnected", ephemeral: true });
+    interaction.reply({
+      embeds: [
+        UI.getMessageEmbedWith({
+          title: "disconnected",
+        }),
+      ],
+      ephemeral: true,
+    });
   };
   private addRole = async (interaction: CommandInteraction<CacheType>) => {
     const roleName = interaction.options.getString("role-name");
@@ -585,9 +604,23 @@ export class Bot {
         color,
         emoji,
       });
-      return interaction.reply({ content: "added", ephemeral: true });
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: "Added",
+          }),
+        ],
+        ephemeral: true,
+      });
     } catch (e) {
-      return interaction.reply({ content: e.message, ephemeral: true });
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: e.message,
+          }),
+        ],
+        ephemeral: true,
+      });
     }
   };
 
@@ -608,9 +641,24 @@ export class Bot {
       });
     try {
       await this.roles.deleteRole({ roleName, guildId });
-      return interaction.reply({ content: "deleted", ephemeral: true });
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: 'deleted',
+          }),
+        ],
+        ephemeral: true,
+      });
     } catch (e) {
-      return interaction.reply({ content: e.message, ephemeral: true });
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: e.message,
+            color: "RED",
+          }),
+        ],
+        ephemeral: true,
+      });
     }
   };
 
@@ -642,9 +690,13 @@ export class Bot {
     });
     if (!dbUserTo) {
       return interaction.reply({
-        content: `${userTo.toString()} ${
-          interaction.user.username
-        } sends you KIRO but you not connected with web3 account.`,
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: `${userTo.toString()} ${
+              interaction.user.username
+            } sends you KIRO but you not connected with web3 account.`,
+          }),
+        ],
       });
     }
 
@@ -667,7 +719,14 @@ export class Bot {
       });
 
     if (!dbUserFrom.vault) {
-      return interaction.reply("Vault not found");
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: "Vault not found",
+            color: "RED",
+          }),
+        ],
+      });
     }
 
     const userFromAddress =
@@ -707,7 +766,14 @@ export class Bot {
         return interaction.reply(reply);
       }
 
-      return interaction.reply("Transaction failed");
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: "Transaction failed",
+            color: "RED",
+          }),
+        ],
+      });
     }
   };
 
@@ -746,9 +812,13 @@ export class Bot {
     });
     if (!dbUserTo) {
       return interaction.reply({
-        content: `${userTo.toString()} ${
-          interaction.user.username
-        } sends you KIRO but you not connected with web3 account.`,
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: `${userTo.toString()} ${
+              interaction.user.username
+            } sends you KIRO but you not connected with web3 account.`,
+          }),
+        ],
       });
     }
 
@@ -771,7 +841,14 @@ export class Bot {
       });
 
     if (!dbUserFrom.vault) {
-      return interaction.reply("Vault not found");
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: "Vault not found",
+            color: "RED",
+          }),
+        ],
+      });
     }
 
     const userFromAddress =
@@ -812,7 +889,14 @@ export class Bot {
         return interaction.reply(reply);
       }
 
-      return interaction.reply("Transaction failed");
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({
+            title: "Transaction failed",
+            color: "RED",
+          }),
+        ],
+      });
     }
   };
 
@@ -840,21 +924,25 @@ export class Bot {
     } else {
       user?.emitGetTransaction({
         type: type === "outgoing" ? "DEPOSIT" : "COLLECT",
-        channelId: interaction.channelId,
+        userId: interaction.user.id,
       });
 
-      return interaction.reply("Fetching...");
+      return interaction.reply({
+        embeds: [UI.getMessageEmbedWith({ title: "Fetching transfers..." })],
+        ephemeral: true,
+      });
     }
   };
 
   private undo = async ({
     interaction,
     id,
+    guildId,
   }: {
     interaction: CommandInteraction<CacheType>;
     id: string;
+    guildId: string;
   }) => {
-    const guildId = interaction.guild?.id;
     if (!guildId)
       return interaction.reply({
         content: "failed to fetch guild id",
@@ -862,7 +950,7 @@ export class Bot {
       });
 
     const user = this.getGuildUser({
-      guildId: interaction.guildId,
+      guildId,
       id: interaction.user.id,
     });
 
@@ -873,18 +961,23 @@ export class Bot {
         id,
       });
 
-      return interaction.reply("Confirm undo in metamask");
+      return interaction.reply({
+        embeds: [
+          UI.getMessageEmbedWith({ title: "Confirm undo in metamask app" }),
+        ],
+      });
     }
   };
 
   private collect = async ({
     interaction,
     id,
+    guildId,
   }: {
     interaction: CommandInteraction<CacheType>;
     id: string;
+    guildId: string;
   }) => {
-    const guildId = interaction.guild?.id;
     if (!guildId)
       return interaction.reply({
         content: "failed to fetch guild id",
@@ -892,31 +985,56 @@ export class Bot {
       });
 
     const user = this.getGuildUser({
-      guildId: interaction.guildId,
+      guildId,
       id: interaction.user.id,
     });
 
     if (!user?.socket) {
       return this.connect(interaction);
     } else {
-      interaction.reply("set collect password").then(() => {
-        const filter = (m: any) => interaction.user.id === m.author.id;
-        const collector = interaction?.channel?.createMessageCollector({ filter, time: 30000, max: 1 });
+      interaction
+        .reply({
+          embeds: [
+            UI.getMessageEmbedWith({
+              title: "Set passcode",
+              description: "To set passcode enter the message" 
+            }),
+          ],
+        })
+        .then(() => {
+          const collector =
+            interaction?.user?.dmChannel?.createMessageCollector({
+              time: 30000,
+              max: 1,
+            });
 
-        if(!collector) return;
+          if (!collector) return;
 
-        collector.on('collect', (m) => {
-          user.collect({ id, passcode: m.content })
+          collector.on("collect", (m) => {
+            interaction.followUp({
+              embeds: [
+                UI.getMessageEmbedWith({
+                  title: `Collect request was sent`,
+                }),
+              ],
+            });
+            user.collect({ id, passcode: m.content });
+          });
+
+          collector.on("end", (collected) => {
+            if (collected.size) return;
+            interaction.followUp({
+              embeds: [
+                UI.getMessageEmbedWith({
+                  title: `No passcode was set`,
+                  color: "RED",
+                }),
+              ],
+            });
+          });
         });
-        
-        collector.on('end', (collected) => {
-          if(collected.size) return;
-          interaction.followUp(`No passcode was set`);
-        });
-      });
     }
   };
-
 
   public getNfts = async ({
     interaction,
@@ -930,7 +1048,11 @@ export class Bot {
       id: interaction.user.id,
     });
     if (!user) {
-      interaction.editReply({ content: "not connected" });
+      interaction.editReply({
+        embeds: [
+          UI.getMessageEmbedWith({ title: "not connected", color: "RED" }),
+        ],
+      });
     }
     const nftsEmbeds = await user?.getNftsEmbeds({
       interaction,
@@ -957,7 +1079,6 @@ export class Bot {
         return;
       }
       if (socket.handshake.query.token !== token.token) return;
-      token.token = "";
       const user = this.createUser({
         userId,
         guildId,
@@ -971,7 +1092,7 @@ export class Bot {
     };
     setTimeout(() => {
       token.token = "";
-    }, 60000);
+    }, 120000);
 
     this.io.off("connection", connectListener);
     this.io.on("connection", connectListener);
