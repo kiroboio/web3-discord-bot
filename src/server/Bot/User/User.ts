@@ -294,7 +294,7 @@ export class User extends NFTs {
     url?: string;
   }) => {
     if (!this.socket) return false;
-    this.socket.emit("sendKiro", {
+    this.socket.emit("send", {
       addressTo,
       chainId,
       amount,
@@ -302,6 +302,7 @@ export class User extends NFTs {
       type,
       url,
       passcode,
+      currency: "ETH",
     });
     return true;
   };
