@@ -487,7 +487,7 @@ export class User extends NFTs {
     const userName = user?.username;
     const userToName = this.client.users.cache.get(userToId)?.username;
     return this.getMessageToUserEmbeds({
-      title: `${userName} confirm ${symbol} transaction in your metamask`,
+      title: `${userName} confirm ${symbol} transaction at metamask`,
       thumbnail: "attachment://vault.png",
       footer: { text: "Kirobo", iconURL: "attachment://kirogo.png" },
       files: [attachment, logoAttachment],
